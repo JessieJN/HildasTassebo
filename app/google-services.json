@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "617350411079",
+    "project_id": "hildastassebo-987d5",
+    "storage_bucket": "hildastassebo-987d5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:617350411079:android:59ee51f2f78238b64e9262",
+        "android_client_info": {
+          "package_name": "com.example.hildastassebo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDxPkvbEWLyU5OEZ5cVKFM8lzhMDo2n-YY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
