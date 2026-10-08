@@ -54,11 +54,10 @@ fun RegisterScreen(
         verticalArrangement = Arrangement.Center
     ) {
 
-        Text(
-            text = "🐾",
-            fontSize = 64.sp
+       PawPrint(
+         modifier = Modifier.size(88.dp),
+         color = Sage
         )
-
         Spacer(Modifier.height(16.dp))
 
         Text(
