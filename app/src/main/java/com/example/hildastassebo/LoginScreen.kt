@@ -303,7 +303,7 @@ fun LoginScreen(
 
 // Tassymbol ritad direkt i Compose
 @Composable
-private fun PawPrint(
+fun PawPrint(
     modifier: Modifier = Modifier,
     color: Color = Sage
 ) {

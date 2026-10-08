@@ -19,8 +19,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
+import com.google.firebase.firestore.FirebaseFirestore
 
 private val Sage = Color(0xFF91B1A3)
 private val DarkSage = Color(0xFF47796C)
@@ -34,7 +36,8 @@ fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     onLoginClick: () -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -42,6 +45,7 @@ fun RegisterScreen(
     var error by remember { mutableStateOf("") }
 
     val auth = remember { FirebaseAuth.getInstance() }
+    val db = remember { FirebaseFirestore.getInstance() }
 
     Column(
         modifier = Modifier
@@ -54,10 +58,11 @@ fun RegisterScreen(
         verticalArrangement = Arrangement.Center
     ) {
 
-       PawPrint(
-         modifier = Modifier.size(88.dp),
-         color = Sage
+        PawPrint(
+            modifier = Modifier.size(88.dp),
+            color = Sage
         )
+
         Spacer(Modifier.height(16.dp))
 
         Text(
@@ -96,15 +101,14 @@ fun RegisterScreen(
 
         Spacer(Modifier.height(30.dp))
 
-        // Fullständigt namn
         OutlinedTextField(
-            value = name,
+            value = firstName,
             onValueChange = {
-                name = it
+                firstName = it
                 error = ""
             },
-            label = { Text("Fullständigt namn") },
-            placeholder = { Text("Förnamn Efternamn") },
+            label = { Text("Förnamn") },
+            placeholder = { Text("Ditt förnamn") },
             singleLine = true,
             shape = RoundedCornerShape(18.dp),
             colors = registerFieldColors(),
@@ -113,7 +117,22 @@ fun RegisterScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // E-postadress
+        OutlinedTextField(
+            value = lastName,
+            onValueChange = {
+                lastName = it
+                error = ""
+            },
+            label = { Text("Efternamn") },
+            placeholder = { Text("Ditt efternamn") },
+            singleLine = true,
+            shape = RoundedCornerShape(18.dp),
+            colors = registerFieldColors(),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(16.dp))
+
         OutlinedTextField(
             value = email,
             onValueChange = {
@@ -133,7 +152,6 @@ fun RegisterScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // Lösenord
         OutlinedTextField(
             value = password,
             onValueChange = {
@@ -155,7 +173,6 @@ fun RegisterScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // Bekräfta lösenord
         OutlinedTextField(
             value = confirmPassword,
             onValueChange = {
@@ -187,22 +204,29 @@ fun RegisterScreen(
 
         Spacer(Modifier.height(28.dp))
 
-        // Registreringsknapp
         Button(
             onClick = {
                 when {
-                    name.isBlank() -> {
-                        error = "Ange ditt namn."
+                    firstName.isBlank() -> {
+                        error = "Ange ditt förnamn."
                     }
+
+                    lastName.isBlank() -> {
+                        error = "Ange ditt efternamn."
+                    }
+
                     email.isBlank() -> {
                         error = "Ange din e-postadress."
                     }
+
                     password.length < 6 -> {
                         error = "Lösenordet måste ha minst 6 tecken."
                     }
+
                     password != confirmPassword -> {
                         error = "Lösenorden matchar inte."
                     }
+
                     else -> {
                         loading = true
                         error = ""
@@ -211,29 +235,55 @@ fun RegisterScreen(
                             email.trim(),
                             password
                         ).addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                val user = auth.currentUser
 
-                                val profile =
-                                    UserProfileChangeRequest.Builder()
-                                        .setDisplayName(name.trim())
-                                        .build()
-
-                                if (user != null) {
-                                    user.updateProfile(profile)
-                                        .addOnCompleteListener {
-                                            loading = false
-                                            onRegisterSuccess()
-                                        }
-                                } else {
-                                    loading = false
-                                    error = "Kunde inte läsa kontot."
-                                }
-                            } else {
+                            if (!task.isSuccessful) {
                                 loading = false
                                 error = "Kunde inte skapa kontot. " +
-                                    "Kontrollera uppgifterna " +
-                                    "eller försök igen."
+                                    "Kontrollera uppgifterna."
+                            } else {
+                                val user = task.result?.user
+
+                                if (user == null) {
+                                    loading = false
+                                    error = "Kunde inte läsa kontot."
+                                } else {
+
+                                    val userData = hashMapOf(
+                                        "förnamn" to firstName.trim(),
+                                        "efternamn" to lastName.trim(),
+                                        "epost" to (
+                                            user.email ?: email.trim()
+                                        ),
+                                        "roll" to 0
+                                    )
+
+                                    db.collection("användare")
+                                        .document(user.uid)
+                                        .set(userData)
+                                        .addOnSuccessListener {
+
+                                            val profile =
+                                                UserProfileChangeRequest
+                                                    .Builder()
+                                                    .setDisplayName(
+                                                        "${firstName.trim()} " +
+                                                        lastName.trim()
+                                                    )
+                                                    .build()
+
+                                            user.updateProfile(profile)
+                                                .addOnCompleteListener {
+                                                    loading = false
+                                                    onRegisterSuccess()
+                                                }
+                                        }
+                                        .addOnFailureListener {
+                                            loading = false
+                                            error = "Kontot skapades, men " +
+                                                "profilen kunde inte sparas. " +
+                                                "Kontakta administratören."
+                                        }
+                                }
                             }
                         }
                     }
