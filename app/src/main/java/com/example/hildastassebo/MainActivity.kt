@@ -26,7 +26,10 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
 
-        // Behåller din kollegas Firestore-test
+        // ==========================================
+        // FIRESTORE - Behåller din kollegas test
+        // ==========================================
+
         val db = FirebaseFirestore.getInstance()
 
         db.collection("anteckningar")
@@ -53,46 +56,87 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-        // Här startar appens gränssnitt
+        // ==========================================
+        // APPENS GRÄNSSNITT
+        // ==========================================
+
         setContent {
             HildasTasseboTheme {
 
+                // Firebase Authentication
                 val auth = remember {
                     FirebaseAuth.getInstance()
                 }
 
+                // Kontrollerar om användaren är inloggad
                 var isLoggedIn by remember {
-                    mutableStateOf(auth.currentUser != null)
+                    mutableStateOf(
+                        auth.currentUser != null
+                    )
                 }
 
-                if (isLoggedIn) {
+                // Bestämmer om registreringssidan visas
+                var showRegister by remember {
+                    mutableStateOf(false)
+                }
 
-                    // Tillfällig startsida
-                    Scaffold(
-                        modifier = Modifier.fillMaxSize()
-                    ) { innerPadding ->
+                // ==================================
+                // NAVIGERING MELLAN SIDOR
+                // ==================================
 
-                        Greeting(
-                            name = "Välkommen till Hildas Tassebo!",
-                            modifier = Modifier.padding(innerPadding)
+                when {
+
+                    // 1. Användaren är inloggad
+                    isLoggedIn -> {
+
+                        Scaffold(
+                            modifier = Modifier.fillMaxSize()
+                        ) { innerPadding ->
+
+                            Greeting(
+                                name = "Välkommen till Hildas Tassebo!",
+                                modifier = Modifier.padding(
+                                    innerPadding
+                                )
+                            )
+                        }
+                    }
+
+                    // 2. Användaren vill registrera sig
+                    showRegister -> {
+
+                        RegisterScreen(
+                            onRegisterSuccess = {
+                                isLoggedIn = true
+                            },
+                            onLoginClick = {
+                                showRegister = false
+                            }
                         )
                     }
 
-                } else {
+                    // 3. Användaren ska logga in
+                    else -> {
 
-                    // Er nya inloggningssida
-                    LoginScreen(
-                        onLoginSuccess = {
-                            isLoggedIn = true
-                        }
-                    )
+                        LoginScreen(
+                            onLoginSuccess = {
+                                isLoggedIn = true
+                            },
+                            onRegisterClick = {
+                                showRegister = true
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-// Tillfällig startsida
+// ==========================================
+// TILLFÄLLIG STARTSIDA
+// ==========================================
+
 @Composable
 fun Greeting(
     name: String,
@@ -104,10 +148,16 @@ fun Greeting(
     )
 }
 
+// ==========================================
+// FÖRHANDSVISNING
+// ==========================================
+
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
     HildasTasseboTheme {
-        Greeting("Välkommen till Hildas Tassebo!")
+        Greeting(
+            "Välkommen till Hildas Tassebo!"
+        )
     }
 }
