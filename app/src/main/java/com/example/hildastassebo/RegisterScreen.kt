@@ -41,8 +41,11 @@ fun RegisterScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+    var verificationSent by remember { mutableStateOf(false) }
 
     val auth = remember { FirebaseAuth.getInstance() }
     val db = remember { FirebaseFirestore.getInstance() }
@@ -84,232 +87,407 @@ fun RegisterScreen(
 
         Spacer(Modifier.height(40.dp))
 
-        Text(
-            text = "Skapa ditt konto",
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            color = Ink
-        )
+        if (!verificationSent) {
 
-        Spacer(Modifier.height(8.dp))
+            // REGISTRERING
 
-        Text(
-            text = "Bli en del av Hildas Tassebo",
-            fontSize = 14.sp,
-            color = Muted
-        )
-
-        Spacer(Modifier.height(30.dp))
-
-        OutlinedTextField(
-            value = firstName,
-            onValueChange = {
-                firstName = it
-                error = ""
-            },
-            label = { Text("Förnamn") },
-            placeholder = { Text("Ditt förnamn") },
-            singleLine = true,
-            shape = RoundedCornerShape(18.dp),
-            colors = registerFieldColors(),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = lastName,
-            onValueChange = {
-                lastName = it
-                error = ""
-            },
-            label = { Text("Efternamn") },
-            placeholder = { Text("Ditt efternamn") },
-            singleLine = true,
-            shape = RoundedCornerShape(18.dp),
-            colors = registerFieldColors(),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = {
-                email = it
-                error = ""
-            },
-            label = { Text("E-postadress") },
-            placeholder = { Text("din@email.se") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Email
-            ),
-            shape = RoundedCornerShape(18.dp),
-            colors = registerFieldColors(),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = {
-                password = it
-                error = ""
-            },
-            label = { Text("Lösenord") },
-            placeholder = { Text("Minst 6 tecken") },
-            singleLine = true,
-            visualTransformation =
-                PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Password
-            ),
-            shape = RoundedCornerShape(18.dp),
-            colors = registerFieldColors(),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = confirmPassword,
-            onValueChange = {
-                confirmPassword = it
-                error = ""
-            },
-            label = { Text("Bekräfta lösenord") },
-            placeholder = { Text("Upprepa lösenord") },
-            singleLine = true,
-            visualTransformation =
-                PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Password
-            ),
-            shape = RoundedCornerShape(18.dp),
-            colors = registerFieldColors(),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        if (error.isNotEmpty()) {
-            Spacer(Modifier.height(12.dp))
             Text(
-                text = error,
-                color = MaterialTheme.colorScheme.error,
-                fontSize = 13.sp,
-                textAlign = TextAlign.Center
+                text = "Skapa ditt konto",
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = Ink
             )
-        }
 
-        Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(8.dp))
 
-        Button(
-            onClick = {
-                when {
-                    firstName.isBlank() -> {
-                        error = "Ange ditt förnamn."
-                    }
+            Text(
+                text = "Bli en del av Hildas Tassebo",
+                fontSize = 14.sp,
+                color = Muted
+            )
 
-                    lastName.isBlank() -> {
-                        error = "Ange ditt efternamn."
-                    }
+            Spacer(Modifier.height(30.dp))
 
-                    email.isBlank() -> {
-                        error = "Ange din e-postadress."
-                    }
+            OutlinedTextField(
+                value = firstName,
+                onValueChange = {
+                    firstName = it
+                    error = ""
+                },
+                label = { Text("Förnamn") },
+                placeholder = { Text("Ditt förnamn") },
+                singleLine = true,
+                shape = RoundedCornerShape(18.dp),
+                colors = registerFieldColors(),
+                modifier = Modifier.fillMaxWidth()
+            )
 
-                    password.length < 6 -> {
-                        error = "Lösenordet måste ha minst 6 tecken."
-                    }
+            Spacer(Modifier.height(16.dp))
 
-                    password != confirmPassword -> {
-                        error = "Lösenorden matchar inte."
-                    }
+            OutlinedTextField(
+                value = lastName,
+                onValueChange = {
+                    lastName = it
+                    error = ""
+                },
+                label = { Text("Efternamn") },
+                placeholder = { Text("Ditt efternamn") },
+                singleLine = true,
+                shape = RoundedCornerShape(18.dp),
+                colors = registerFieldColors(),
+                modifier = Modifier.fillMaxWidth()
+            )
 
-                    else -> {
-                        loading = true
-                        error = ""
+            Spacer(Modifier.height(16.dp))
 
-                        auth.createUserWithEmailAndPassword(
-                            email.trim(),
-                            password
-                        ).addOnCompleteListener { task ->
+            OutlinedTextField(
+                value = email,
+                onValueChange = {
+                    email = it
+                    error = ""
+                },
+                label = { Text("E-postadress") },
+                placeholder = { Text("din@email.se") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email
+                ),
+                shape = RoundedCornerShape(18.dp),
+                colors = registerFieldColors(),
+                modifier = Modifier.fillMaxWidth()
+            )
 
-                            if (!task.isSuccessful) {
-                                loading = false
-                                error = "Kunde inte skapa kontot. " +
-                                    "Kontrollera uppgifterna."
-                            } else {
-                                val user = task.result?.user
+            Spacer(Modifier.height(16.dp))
 
-                                if (user == null) {
+            OutlinedTextField(
+                value = password,
+                onValueChange = {
+                    password = it
+                    error = ""
+                },
+                label = { Text("Lösenord") },
+                placeholder = { Text("Minst 6 tecken") },
+                singleLine = true,
+                visualTransformation =
+                    PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password
+                ),
+                shape = RoundedCornerShape(18.dp),
+                colors = registerFieldColors(),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = {
+                    confirmPassword = it
+                    error = ""
+                },
+                label = { Text("Bekräfta lösenord") },
+                placeholder = { Text("Upprepa lösenord") },
+                singleLine = true,
+                visualTransformation =
+                    PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password
+                ),
+                shape = RoundedCornerShape(18.dp),
+                colors = registerFieldColors(),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (error.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            Spacer(Modifier.height(28.dp))
+
+            Button(
+                onClick = {
+                    when {
+                        firstName.isBlank() -> {
+                            error = "Ange ditt förnamn."
+                        }
+
+                        lastName.isBlank() -> {
+                            error = "Ange ditt efternamn."
+                        }
+
+                        email.isBlank() -> {
+                            error = "Ange din e-postadress."
+                        }
+
+                        password.length < 6 -> {
+                            error = "Lösenordet måste ha minst 6 tecken."
+                        }
+
+                        password != confirmPassword -> {
+                            error = "Lösenorden matchar inte."
+                        }
+
+                        else -> {
+                            loading = true
+                            error = ""
+
+                            auth.createUserWithEmailAndPassword(
+                                email.trim(),
+                                password
+                            ).addOnCompleteListener { task ->
+
+                                if (!task.isSuccessful) {
                                     loading = false
-                                    error = "Kunde inte läsa kontot."
+                                    error = task.exception?.localizedMessage
+                                        ?: "Kunde inte skapa kontot."
                                 } else {
+                                    val user = task.result?.user
 
-                                    val userData = hashMapOf(
-                                        "förnamn" to firstName.trim(),
-                                        "efternamn" to lastName.trim(),
-                                        "epost" to (
-                                            user.email ?: email.trim()
-                                        ),
-                                        "roll" to 0
-                                    )
+                                    if (user == null) {
+                                        loading = false
+                                        error = "Kunde inte läsa kontot."
+                                    } else {
 
-                                    db.collection("användare")
-                                        .document(user.uid)
-                                        .set(userData)
-                                        .addOnSuccessListener {
+                                        val userData = hashMapOf(
+                                            "förnamn" to firstName.trim(),
+                                            "efternamn" to lastName.trim(),
+                                            "epost" to (
+                                                user.email ?: email.trim()
+                                            ),
+                                            "roll" to 0
+                                        )
 
-                                            val profile =
-                                                UserProfileChangeRequest
-                                                    .Builder()
-                                                    .setDisplayName(
-                                                        "${firstName.trim()} " +
-                                                        lastName.trim()
-                                                    )
-                                                    .build()
+                                        db.collection("användare")
+                                            .document(user.uid)
+                                            .set(userData)
+                                            .addOnSuccessListener {
 
-                                            user.updateProfile(profile)
-                                                .addOnCompleteListener {
-                                                    loading = false
-                                                    onRegisterSuccess()
-                                                }
-                                        }
-                                        .addOnFailureListener {
-                                            loading = false
-                                            error = "Kontot skapades, men " +
-                                                "profilen kunde inte sparas. " +
-                                                "Kontakta administratören."
-                                        }
+                                                val profile =
+                                                    UserProfileChangeRequest
+                                                        .Builder()
+                                                        .setDisplayName(
+                                                            "${firstName.trim()} " +
+                                                            lastName.trim()
+                                                        )
+                                                        .build()
+
+                                                user.updateProfile(profile)
+                                                    .addOnCompleteListener {
+                                                        user.sendEmailVerification()
+                                                            .addOnCompleteListener { verifyTask ->
+
+                                                                loading = false
+                                                                verificationSent = true
+
+                                                                if (verifyTask.isSuccessful) {
+                                                                    message =
+                                                                        "Vi har skickat ett verifieringsmejl till ${user.email}."
+                                                                    error = ""
+                                                                } else {
+                                                                    error =
+                                                                        "Kontot skapades, men mejlet kunde inte skickas."
+                                                                }
+                                                            }
+                                                    }
+                                            }
+                                            .addOnFailureListener {
+                                                loading = false
+                                                error =
+                                                    "Kontot skapades, men profilen kunde inte sparas."
+                                            }
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            },
-            enabled = !loading,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(58.dp),
-            shape = RoundedCornerShape(18.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Sage,
-                contentColor = Color.White
-            )
-        ) {
-            if (loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
+                },
+                enabled = !loading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Sage,
+                    contentColor = Color.White
                 )
-            } else {
+            ) {
+                if (loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "Skapa konto",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+        } else {
+
+            // E-POSTVERIFIERING
+
+            Text(
+                text = "Verifiera din e-post",
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = Ink,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                text = "Tack för att du registrerade dig!",
+                fontSize = 16.sp,
+                color = DarkSage,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                text = "Vi har skapat ditt konto. " +
+                    "Kontrollera din e-post och klicka på " +
+                    "verifieringslänken innan du fortsätter.",
+                fontSize = 14.sp,
+                color = Muted,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                text = auth.currentUser?.email ?: email,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = DarkSage,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            if (message.isNotEmpty()) {
                 Text(
-                    text = "Skapa konto",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold
+                    text = message,
+                    color = DarkSage,
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            if (error.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // KONTROLLERA VERIFIERING
+
+            Button(
+                onClick = {
+                    loading = true
+                    error = ""
+                    message = ""
+
+                    val user = auth.currentUser
+
+                    if (user == null) {
+                        loading = false
+                        error = "Ingen användare är inloggad."
+                    } else {
+                        user.reload()
+                            .addOnCompleteListener { task ->
+                                loading = false
+
+                                if (!task.isSuccessful) {
+                                    error =
+                                        "Kunde inte kontrollera verifieringen."
+                                } else if (user.isEmailVerified) {
+                                    onRegisterSuccess()
+                                } else {
+                                    error =
+                                        "Din e-postadress är inte verifierad ännu."
+                                }
+                            }
+                    }
+                },
+                enabled = !loading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Sage,
+                    contentColor = Color.White
+                )
+            ) {
+                if (loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Jag har verifierat min e-post")
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // SKICKA MEJLET IGEN
+
+            OutlinedButton(
+                onClick = {
+                    loading = true
+                    error = ""
+                    message = ""
+
+                    val user = auth.currentUser
+
+                    if (user == null) {
+                        loading = false
+                        error = "Ingen användare är inloggad."
+                    } else {
+                        user.sendEmailVerification()
+                            .addOnCompleteListener { task ->
+                                loading = false
+
+                                if (task.isSuccessful) {
+                                    message =
+                                        "Ett nytt verifieringsmejl har skickats!"
+                                } else {
+                                    error =
+                                        "Kunde inte skicka mejlet. Försök senare."
+                                }
+                            }
+                    }
+                },
+                enabled = !loading,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Text(
+                    text = "Skicka verifieringsmejl igen",
+                    color = DarkSage
                 )
             }
         }
