@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.hildastassebo.ui.screens.MainScreen
 
 import com.example.hildastassebo.ui.theme.HildasTasseboTheme
 
@@ -89,17 +90,7 @@ class MainActivity : ComponentActivity() {
                     // 1. Användaren är inloggad
                     isLoggedIn -> {
 
-                        Scaffold(
-                            modifier = Modifier.fillMaxSize()
-                        ) { innerPadding ->
-
-                            Greeting(
-                                name = "Välkommen till Hildas Tassebo!",
-                                modifier = Modifier.padding(
-                                    innerPadding
-                                )
-                            )
-                        }
+                        MainScreen()
                     }
 
                     // 2. Användaren vill registrera sig
