@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.hildastassebo.ui.navigation.BottomNavigationBar
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun MainScreen() {
@@ -31,11 +32,15 @@ fun MainScreen() {
                 .fillMaxSize()
         ) {
             when (selectedTab) {
-                "home" -> HomeScreen(userName = "Jessie")
+                "home" -> HomeScreen(
+                    userName = FirebaseAuth.getInstance()
+                        .currentUser
+                        ?.displayName
+                        ?.substringBefore(" ")
+                        ?: "Volontär"
+                )
 
-                "calendar" -> {
-                    // Här lägger vi CalendarScreen senare
-                }
+                "calendar" -> CalendarScreen()
 
                 "profile" -> {
                     // Här lägger vi ProfileScreen senare
