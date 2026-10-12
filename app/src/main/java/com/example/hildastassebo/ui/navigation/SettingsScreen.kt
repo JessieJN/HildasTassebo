@@ -1,0 +1,286 @@
+
+package com.example.hildastassebo.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+import com.google.firebase.auth.EmailAuthProvider
+import com.google.firebase.auth.FirebaseAuth
+
+private val SageGreen = Color(0xFF47796C)
+private val BackgroundColor = Color(0xFFFAFAF7)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    onBack: () -> Unit
+) {
+    val auth = remember { FirebaseAuth.getInstance() }
+    val user = auth.currentUser
+
+    var newEmail by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var currentPassword by remember { mutableStateOf("") }
+
+    var message by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+
+    val isEmailAccount = user?.providerData?.any {
+        it.providerId == "password"
+    } == true
+
+    Scaffold(
+        containerColor = BackgroundColor,
+        topBar = {
+            TopAppBar(
+                title = { Text("Inställningar") },
+                navigationIcon = {
+                    TextButton(onClick = onBack) {
+                        Text("← Tillbaka", color = SageGreen)
+                    }
+                }
+            )
+        }
+    ) { padding ->
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+
+            Text(
+                text = "Mitt konto",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = "Inloggad som: ${user?.email ?: "Okänd"}",
+                color = Color.Gray
+            )
+
+            if (!isEmailAccount) {
+                Text(
+                    text = "Den här sidan är avsedd för konton " +
+                        "som loggar in med e-post och lösenord."
+                )
+            } else {
+
+                OutlinedTextField(
+                    value = currentPassword,
+                    onValueChange = { currentPassword = it },
+                    label = { Text("Nuvarande lösenord") },
+                    visualTransformation =
+                        PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                HorizontalDivider()
+
+                Text(
+                    text = "Ändra e-postadress",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                OutlinedTextField(
+                    value = newEmail,
+                    onValueChange = { newEmail = it },
+                    label = { Text("Ny e-postadress") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Button(
+                    onClick = {
+                        val activeUser = auth.currentUser
+                        val oldEmail = activeUser?.email
+
+                        if (activeUser == null ||
+                            oldEmail.isNullOrBlank()
+                        ) {
+                            message = "Du måste vara inloggad."
+                        } else if (currentPassword.isBlank()) {
+                            message = "Ange ditt nuvarande lösenord."
+                        } else if (newEmail.isBlank()) {
+                            message = "Ange en ny e-postadress."
+                        } else {
+                            isLoading = true
+                            message = ""
+
+                            val credential =
+                                EmailAuthProvider.getCredential(
+                                    oldEmail,
+                                    currentPassword
+                                )
+
+                            activeUser.reauthenticate(credential)
+                                .addOnSuccessListener {
+                                    activeUser
+                                        .verifyBeforeUpdateEmail(
+                                            newEmail.trim()
+                                        )
+                                        .addOnSuccessListener {
+                                            message =
+                                                "Ett verifieringsmejl har " +
+                                                "skickats till din nya " +
+                                                "e-postadress. Följ " +
+                                                "instruktionerna i mejlet."
+                                            newEmail = ""
+                                            isLoading = false
+                                        }
+                                        .addOnFailureListener {
+                                            message =
+                                                it.localizedMessage
+                                                    ?: "Kunde inte ändra e-post."
+                                            isLoading = false
+                                        }
+                                }
+                                .addOnFailureListener {
+                                    message =
+                                        "Kunde inte verifiera lösenordet."
+                                    isLoading = false
+                                }
+                        }
+                    },
+                    enabled = !isLoading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SageGreen
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Uppdatera e-postadress")
+                }
+
+                HorizontalDivider()
+
+                Text(
+                    text = "Ändra lösenord",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = { newPassword = it },
+                    label = { Text("Nytt lösenord") },
+                    visualTransformation =
+                        PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    label = { Text("Bekräfta nytt lösenord") },
+                    visualTransformation =
+                        PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Button(
+                    onClick = {
+                        val activeUser = auth.currentUser
+                        val oldEmail = activeUser?.email
+
+                        when {
+                            activeUser == null ||
+                                oldEmail.isNullOrBlank() -> {
+                                message = "Du måste vara inloggad."
+                            }
+
+                            currentPassword.isBlank() -> {
+                                message =
+                                    "Ange ditt nuvarande lösenord."
+                            }
+
+                            newPassword.length < 6 -> {
+                                message =
+                                    "Lösenordet måste ha minst 6 tecken."
+                            }
+
+                            newPassword != confirmPassword -> {
+                                message =
+                                    "De nya lösenorden matchar inte."
+                            }
+
+                            else -> {
+                                isLoading = true
+                                message = ""
+
+                                val credential =
+                                    EmailAuthProvider.getCredential(
+                                        oldEmail,
+                                        currentPassword
+                                    )
+
+                                activeUser
+                                    .reauthenticate(credential)
+                                    .addOnSuccessListener {
+                                        activeUser
+                                            .updatePassword(newPassword)
+                                            .addOnSuccessListener {
+                                                message =
+                                                    "Lösenordet har ändrats!"
+                                                newPassword = ""
+                                                confirmPassword = ""
+                                                currentPassword = ""
+                                                isLoading = false
+                                            }
+                                            .addOnFailureListener {
+                                                message =
+                                                    it.localizedMessage
+                                                        ?: "Kunde inte ändra lösenord."
+                                                isLoading = false
+                                            }
+                                    }
+                                    .addOnFailureListener {
+                                        message =
+                                            "Kunde inte verifiera lösenordet."
+                                        isLoading = false
+                                    }
+                            }
+                        }
+                    },
+                    enabled = !isLoading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SageGreen
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Ändra lösenord")
+                }
+            }
+
+            if (isLoading) {
+                CircularProgressIndicator(color = SageGreen)
+            }
+
+            if (message.isNotBlank()) {
+                Text(
+                    text = message,
+                    color = SageGreen,
+                    fontSize = 14.sp
+                )
+            }
+        }
+    }
+}

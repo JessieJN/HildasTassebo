@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +37,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
 import java.util.Locale
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 
 // ============================================================
 // 1. FÄRGER OCH GRUNDINSTÄLLNINGAR (befintlig design)
@@ -89,17 +92,29 @@ private data class CalendarNote(
     val createdAt: LocalDateTime
 )
 
+// Representerar ett evenemang kopplat till ett datum.
+data class CalendarEvent(
+    val id: String,
+    val date: LocalDate,
+    val title: String,
+    val description: String,
+    val time: String
+)
+
 // ============================================================
 // 3. HUVUDSKÄRM: TILLSTÅND, KALENDER OCH DIALOGRUTOR
 // ============================================================
 @Composable
-fun CalendarScreen() {
+fun CalendarScreen(
+    events: MutableMap<LocalDate, List<CalendarEvent>>
+) {
     val today = remember { LocalDate.now() }
 
     var selectedDate by remember { mutableStateOf(today) }
     var mode by remember { mutableStateOf(CalendarMode.WEEK) }
     var listFilter by remember { mutableStateOf(ShiftListFilter.ALL) }
     var bookingDialog by remember { mutableStateOf<ShiftType?>(null) }
+    var shiftToCancel by remember { mutableStateOf<ShiftKey?>(null) }
     var wantsToWorkAlone by remember { mutableStateOf(false) }
 
     // ANTECKNINGAR: tillfälligt i minnet, ännu inte sparade i Firestore.
@@ -108,6 +123,14 @@ fun CalendarScreen() {
     var editingNote by remember { mutableStateOf<CalendarNote?>(null) }
     var noteToDelete by remember { mutableStateOf<CalendarNote?>(null) }
     val notes = remember { mutableStateMapOf<LocalDate, List<CalendarNote>>() }
+
+
+    var showEventDialog by remember { mutableStateOf(false) }
+    var eventTitle by remember { mutableStateOf("") }
+    var eventDescription by remember { mutableStateOf("") }
+    var eventTime by remember { mutableStateOf("") }
+    var editingEvent by remember { mutableStateOf<CalendarEvent?>(null) }
+    var eventToDelete by remember { mutableStateOf<CalendarEvent?>(null) }
 
     // Inloggad användare signerar automatiskt nya anteckningar.
     val currentUser = FirebaseAuth.getInstance().currentUser
@@ -425,9 +448,170 @@ fun CalendarScreen() {
 
                     ShiftCard(
                         type = type,
-                        bookings = shiftBookings
+                        bookings = shiftBookings,
+                        date = selectedDate,
+                        isAdmin = isAdmin,
+                        onCancelClick = { booking ->
+                            if (booking.isMe) {
+                                shiftToCancel = ShiftKey(selectedDate, type)
+                            }
+                        }
                     )
                 }
+
+                // ----------------------------------------------------
+                // 3D. BEFINTLIG BOKNINGSKNAPP
+                // ----------------------------------------------------
+                item {
+                    Button(
+                        onClick = {
+                            wantsToWorkAlone = false
+                            bookingDialog = ShiftType.MORNING
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DarkSage
+                        )
+                    ) {
+                        Icon(
+                            Icons.Outlined.EventAvailable,
+                            contentDescription = null
+                        )
+
+                        Spacer(Modifier.width(10.dp))
+
+                        Text(
+                            "Boka pass",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                // ----------------------------------------------------
+                // EVENEMANG FÖR VALT DATUM
+                // ----------------------------------------------------
+                                item {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                Color(0xFFF3F6F4),
+                                                RoundedCornerShape(16.dp)
+                                            )
+                                            .padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Text(
+                                            text = "Evenemang",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Ink
+                                        )
+
+                                        val dateEvents = events[selectedDate].orEmpty()
+
+                                        if (dateEvents.isEmpty()) {
+                                            Text(
+                                                text = "Inga evenemang för detta datum.",
+                                                fontSize = 14.sp,
+                                                color = Muted
+                                            )
+                                        } else {
+                                            dateEvents.forEach { event ->
+                                                Column(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text(
+                                                            text = event.title,
+                                                            fontSize = 15.sp,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            color = Ink,
+                                                            modifier = Modifier.weight(1f)
+                                                        )
+
+                                                        // Redigera evenemang
+                                                        IconButton(
+                                                            onClick = {
+                                                                editingEvent = event
+                                                                eventTitle = event.title
+                                                                eventDescription = event.description
+                                                                eventTime = event.time
+                                                                showEventDialog = true
+                                                            },
+                                                            modifier = Modifier.size(36.dp)
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Outlined.Edit,
+                                                                contentDescription = "Redigera evenemang",
+                                                                tint = DarkSage,
+                                                                modifier = Modifier.size(19.dp)
+                                                            )
+                                                        }
+
+                                                        // Ta bort evenemang
+                                                        IconButton(
+                                                            onClick = {
+                                                                eventToDelete = event
+                                                            },
+                                                            modifier = Modifier.size(36.dp)
+                                                        ) {
+                                                            Icon(
+                                                                imageVector = Icons.Outlined.Delete,
+                                                                contentDescription = "Ta bort evenemang",
+                                                                tint = Muted,
+                                                                modifier = Modifier.size(19.dp)
+                                                            )
+                                                        }
+                                                    }
+
+                                                    if (event.time.isNotBlank()) {
+                                                        Text(
+                                                            text = event.time,
+                                                            fontSize = 13.sp,
+                                                            color = DarkSage
+                                                        )
+                                                    }
+
+                                                    if (event.description.isNotBlank()) {
+                                                        Text(
+                                                            text = event.description,
+                                                            fontSize = 14.sp,
+                                                            color = Muted
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        OutlinedButton(
+                                            onClick = {
+                                                editingEvent = null
+                                                eventTitle = ""
+                                                eventDescription = ""
+                                                eventTime = ""
+                                                showEventDialog = true
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(12.dp),
+                                            border = BorderStroke(1.dp, DarkSage),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                contentColor = DarkSage
+                                            )
+                                        ) {
+                                            Icon(Icons.Outlined.Add, contentDescription = null)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("Lägg till evenemang")
+                                        }
+                                    }
+                                }
 
                 // ----------------------------------------------------
                 // 3C. ANTECKNINGAR FÖR VALT DATUM
@@ -517,37 +701,7 @@ fun CalendarScreen() {
                 }
 
 
-                // ----------------------------------------------------
-                // 3D. BEFINTLIG BOKNINGSKNAPP (oförändrad)
-                // ----------------------------------------------------
-                item {
-                    Button(
-                        onClick = {
-                            wantsToWorkAlone = false
-                            bookingDialog = ShiftType.MORNING
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkSage
-                        )
-                    ) {
-                        Icon(
-                            Icons.Outlined.EventAvailable,
-                            contentDescription = null
-                        )
 
-                        Spacer(Modifier.width(10.dp))
-
-                        Text(
-                            "Boka pass",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
 
                 // ----------------------------------------------------
                 // 3E. NY SEKUNDÄR KNAPP FÖR ANTECKNINGAR
@@ -698,6 +852,147 @@ fun CalendarScreen() {
     }
 
     // ------------------------------------------------------------
+    // DIALOG: LÄGG TILL EVENEMANG
+    // ------------------------------------------------------------
+    if (showEventDialog) {
+        AlertDialog(
+            onDismissRequest = { showEventDialog = false },
+            title = {
+                Text("Lägg till evenemang")
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = selectedDate.format(dateFormatter)
+                            .replaceFirstChar { it.uppercase() },
+                        color = Muted
+                    )
+
+                    OutlinedTextField(
+                        value = eventTitle,
+                        onValueChange = { eventTitle = it },
+                        label = { Text("Evenemangets namn") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = eventTime,
+                        onValueChange = { eventTime = it },
+                        label = { Text("Tid (t.ex. 13:00–16:00)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = eventDescription,
+                        onValueChange = { eventDescription = it },
+                        label = { Text("Beskrivning") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 4
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = eventTitle.isNotBlank(),
+
+                    onClick = {
+                        val existing = events[selectedDate].orEmpty()
+                        val edit = editingEvent
+
+                        if (edit == null) {
+                            // Skapa ett nytt evenemang
+                            val newEvent = CalendarEvent(
+                                id = UUID.randomUUID().toString(),
+                                date = selectedDate,
+                                title = eventTitle.trim(),
+                                description = eventDescription.trim(),
+                                time = eventTime.trim()
+                            )
+
+                            events[selectedDate] = existing + newEvent
+                        } else {
+                            // Uppdatera det befintliga evenemanget
+                            events[selectedDate] = existing.map { event ->
+                                if (event.id == edit.id) {
+                                    event.copy(
+                                        title = eventTitle.trim(),
+                                        description = eventDescription.trim(),
+                                        time = eventTime.trim()
+                                    )
+                                } else {
+                                    event
+                                }
+                            }
+                        }
+
+                        showEventDialog = false
+                        editingEvent = null
+                    }
+
+                ) {
+                    Text("Spara", color = DarkSage)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showEventDialog = false }
+                ) {
+                    Text("Avbryt")
+                }
+            }
+        )
+    }
+
+
+    // ----------------------------------------------------
+    // BEKRÄFTELSE INNAN ETT EVENEMANG RADERAS
+    // ----------------------------------------------------
+    eventToDelete?.let { event ->
+        AlertDialog(
+            onDismissRequest = {
+                eventToDelete = null
+            },
+            title = {
+                Text("Ta bort evenemang?")
+            },
+            text = {
+                Text("Vill du verkligen ta bort evenemanget \"${event.title}\"?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        events[event.date] = events[event.date]
+                            .orEmpty()
+                            .filterNot { it.id == event.id }
+
+                        eventToDelete = null
+                    }
+                ) {
+                    Text(
+                        text = "Ta bort",
+                        color = MissingRed
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        eventToDelete = null
+                    }
+                ) {
+                    Text("Avbryt")
+                }
+            }
+        )
+    }
+
+
+    // ------------------------------------------------------------
     // 3G. DIALOG: SKAPA ELLER REDIGERA EN ANTECKNING
     // ------------------------------------------------------------
     if (showNoteDialog) {
@@ -782,6 +1077,30 @@ fun CalendarScreen() {
             dismissButton = {
                 TextButton(onClick = { noteToDelete = null }) {
                     Text("Avbryt")
+                }
+            }
+        )
+    }
+    shiftToCancel?.let { key ->
+        AlertDialog(
+            onDismissRequest = { shiftToCancel = null },
+            title = { Text("Avboka arbetspass?") },
+            text = { Text("Är du säker på att du vill avboka ditt arbetspass?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        bookings[key] = bookings[key].orEmpty()
+                            .filterNot { it.isMe }
+
+                        shiftToCancel = null
+                    }
+                ) {
+                    Text("Avboka pass", color = MissingRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { shiftToCancel = null }) {
+                    Text("Behåll passet")
                 }
             }
         )
@@ -1128,7 +1447,10 @@ private fun LegendItem(
 @Composable
 private fun ShiftCard(
     type: ShiftType,
-    bookings: List<ShiftBooking>
+    bookings: List<ShiftBooking>,
+    date: LocalDate,
+    isAdmin: Boolean,
+    onCancelClick: (ShiftBooking) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1214,6 +1536,57 @@ private fun ShiftCard(
                                 color = DarkSage,
                                 fontSize = 11.sp
                             )
+                        }
+                        if (booking.isMe) {
+                            Spacer(Modifier.weight(1f))
+
+                            val canCancel = isAdmin ||
+                                    date.isAfter(LocalDate.now().plusDays(7))
+
+                            var showLockMessage by remember { mutableStateOf(false) }
+
+                            Box {
+                                Icon(
+                                    imageVector = if (canCancel) {
+                                        Icons.Outlined.Delete
+                                    } else {
+                                        Icons.Outlined.Lock
+                                    },
+                                    contentDescription = if (canCancel) {
+                                        "Avboka pass"
+                                    } else {
+                                        "Passet är låst"
+                                    },
+                                    tint = if (canCancel) MissingRed else Muted,
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .combinedClickable(
+                                            onClick = {
+                                                if (canCancel) {
+                                                    onCancelClick(booking)
+                                                }
+                                            },
+                                            onLongClick = {
+                                                if (!canCancel) {
+                                                    showLockMessage = true
+                                                }
+                                            }
+                                        )
+                                        .padding(5.dp)
+                                )
+
+                                DropdownMenu(
+                                    expanded = showLockMessage,
+                                    onDismissRequest = { showLockMessage = false }
+                                ) {
+                                    Text(
+                                        text = "Kontakta administratör för att avboka passet.",
+                                        modifier = Modifier.padding(16.dp),
+                                        fontSize = 13.sp,
+                                        color = Ink
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -1331,5 +1704,7 @@ private fun UpcomingShiftCard(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun CalendarScreenPreview() {
-    CalendarScreen()
+    CalendarScreen(
+        events = remember { mutableStateMapOf<LocalDate, List<CalendarEvent>>() }
+    )
 }
