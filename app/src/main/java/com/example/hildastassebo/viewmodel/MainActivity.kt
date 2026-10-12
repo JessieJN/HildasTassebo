@@ -13,8 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.hildastassebo.ui.screens.MainScreen
 
+import com.example.hildastassebo.ui.screens.MainScreen
 import com.example.hildastassebo.ui.theme.HildasTasseboTheme
 
 import com.google.firebase.auth.FirebaseAuth
@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         // ==========================================
-        // FIRESTORE - Behåller din kollegas test
+        // FIRESTORE
         // ==========================================
 
         val db = FirebaseFirestore.getInstance()
@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
         // ==========================================
 
         setContent {
+
             HildasTasseboTheme {
 
                 // Firebase Authentication
@@ -87,13 +88,25 @@ class MainActivity : ComponentActivity() {
 
                 when {
 
-                    // 1. Användaren är inloggad
+                    // 1. ANVÄNDAREN ÄR INLOGGAD
                     isLoggedIn -> {
 
-                        MainScreen()
+                        MainScreen(
+                            onLogout = {
+
+                                // Logga ut från Firebase
+                                auth.signOut()
+
+                                // Gå tillbaka till inloggningssidan
+                                isLoggedIn = false
+
+                                // Visa inte registreringssidan
+                                showRegister = false
+                            }
+                        )
                     }
 
-                    // 2. Användaren vill registrera sig
+                    // 2. ANVÄNDAREN VILL REGISTRERA SIG
                     showRegister -> {
 
                         RegisterScreen(
@@ -106,7 +119,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // 3. Användaren ska logga in
+                    // 3. ANVÄNDAREN SKA LOGGA IN
                     else -> {
 
                         LoginScreen(
@@ -146,6 +159,7 @@ fun Greeting(
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
+
     HildasTasseboTheme {
         Greeting(
             "Välkommen till Hildas Tassebo!"
