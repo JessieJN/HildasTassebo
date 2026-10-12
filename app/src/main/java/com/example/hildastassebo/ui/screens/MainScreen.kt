@@ -4,6 +4,7 @@ package com.example.hildastassebo.ui.screens
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -13,6 +14,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.hildastassebo.ui.navigation.BottomNavigationBar
 import com.google.firebase.auth.FirebaseAuth
 import java.time.LocalDate
+import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.runtime.DisposableEffect
 
 @Composable
 fun MainScreen(
@@ -32,6 +35,32 @@ fun MainScreen(
     // Håller reda på om inställningssidan ska visas
     var showSettings by remember {
         mutableStateOf(false)
+    }
+    // Hämtar inloggad användares roll från Firebase
+    var userRole by remember { mutableStateOf<Long?>(null) }
+
+    DisposableEffect(Unit) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+
+        if (userId == null) {
+            userRole = null
+            onDispose { }
+        } else {
+            val listener = FirebaseFirestore.getInstance()
+                .collection("användare")
+                .document(userId)
+                .addSnapshotListener { document, error ->
+                    userRole = if (error == null) {
+                        document?.getLong("roll")
+                    } else {
+                        null
+                    }
+                }
+
+            onDispose {
+                listener.remove()
+            }
+        }
     }
 
     Scaffold(
@@ -99,13 +128,21 @@ fun MainScreen(
                         events = events
                     )
 
-                    // MIN SIDA
-                    "profile" -> ProfileScreen(
-                        onLogout = onLogout,
-                        onSettingsClick = {
-                            showSettings = true
+                    // MIN SIDA – olika beroende på användarens roll
+                    "profile" -> {
+                        when (userRole) {
+                            1L -> AdminScreen(onLogout = onLogout)
+
+                            0L -> ProfileScreen(
+                                onLogout = onLogout,
+                                onSettingsClick = {
+                                    showSettings = true
+                                }
+                            )
+
+                            else -> CircularProgressIndicator()
                         }
-                    )
+                    }
 
                     // OM OSS
                     "about" -> AboutScreen()
