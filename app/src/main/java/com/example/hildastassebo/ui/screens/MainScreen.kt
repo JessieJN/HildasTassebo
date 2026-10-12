@@ -24,9 +24,14 @@ fun MainScreen(
         mutableStateOf("home")
     }
 
-    // Gemensam lista för evenemang i kalendern och på startsidan.
+    // Gemensam lista för evenemang i kalendern och på startsidan
     val events = remember {
         mutableStateMapOf<LocalDate, List<CalendarEvent>>()
+    }
+
+    // Håller reda på om inställningssidan ska visas
+    var showSettings by remember {
+        mutableStateOf(false)
     }
 
     Scaffold(
@@ -39,18 +44,22 @@ fun MainScreen(
 
                 onHomeClick = {
                     selectedTab = "home"
+                    showSettings = false
                 },
 
                 onCalendarClick = {
                     selectedTab = "calendar"
+                    showSettings = false
                 },
 
                 onProfileClick = {
                     selectedTab = "profile"
+                    showSettings = false
                 },
 
                 onAboutClick = {
                     selectedTab = "about"
+                    showSettings = false
                 }
             )
         }
@@ -62,31 +71,45 @@ fun MainScreen(
                 .fillMaxSize()
         ) {
 
-            // Visar rätt sida beroende på vald flik
-            when (selectedTab) {
+            // Visa inställningar eller vald flik
+            if (showSettings) {
 
-                // HEM
-                "home" -> HomeScreen(
-                    userName = FirebaseAuth.getInstance()
-                        .currentUser
-                        ?.displayName
-                        ?.substringBefore(" ")
-                        ?: "Volontär",
-                    events = events
+                SettingsScreen(
+                    onBack = {
+                        showSettings = false
+                    }
                 )
 
-                // KALENDER
-                "calendar" -> CalendarScreen(
-                    events = events
-                )
+            } else {
 
-                // MIN SIDA
-                "profile" -> ProfileScreen(
-                    onLogout = onLogout
-                )
+                when (selectedTab) {
 
-                // OM OSS
-                "about" -> AboutScreen()
+                    // HEM
+                    "home" -> HomeScreen(
+                        userName = FirebaseAuth.getInstance()
+                            .currentUser
+                            ?.displayName
+                            ?.substringBefore(" ")
+                            ?: "Volontär",
+                        events = events
+                    )
+
+                    // KALENDER
+                    "calendar" -> CalendarScreen(
+                        events = events
+                    )
+
+                    // MIN SIDA
+                    "profile" -> ProfileScreen(
+                        onLogout = onLogout,
+                        onSettingsClick = {
+                            showSettings = true
+                        }
+                    )
+
+                    // OM OSS
+                    "about" -> AboutScreen()
+                }
             }
         }
     }
