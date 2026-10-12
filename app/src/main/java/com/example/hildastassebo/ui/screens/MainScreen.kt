@@ -45,7 +45,7 @@ fun MainScreen() {
 
                 "profile" -> {
                     // Här lägger vi ProfileScreen senare
-                
+                }
                 "about" -> AboutScreen()
                 }
             }
