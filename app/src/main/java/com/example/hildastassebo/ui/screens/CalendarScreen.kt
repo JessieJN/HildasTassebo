@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +37,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
 import java.util.Locale
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 
 // ============================================================
 // 1. FÄRGER OCH GRUNDINSTÄLLNINGAR (befintlig design)
@@ -100,6 +103,7 @@ fun CalendarScreen() {
     var mode by remember { mutableStateOf(CalendarMode.WEEK) }
     var listFilter by remember { mutableStateOf(ShiftListFilter.ALL) }
     var bookingDialog by remember { mutableStateOf<ShiftType?>(null) }
+    var shiftToCancel by remember { mutableStateOf<ShiftKey?>(null) }
     var wantsToWorkAlone by remember { mutableStateOf(false) }
 
     // ANTECKNINGAR: tillfälligt i minnet, ännu inte sparade i Firestore.
@@ -425,7 +429,14 @@ fun CalendarScreen() {
 
                     ShiftCard(
                         type = type,
-                        bookings = shiftBookings
+                        bookings = shiftBookings,
+                        date = selectedDate,
+                        isAdmin = isAdmin,
+                        onCancelClick = { booking ->
+                            if (booking.isMe) {
+                                shiftToCancel = ShiftKey(selectedDate, type)
+                            }
+                        }
                     )
                 }
 
@@ -786,6 +797,30 @@ fun CalendarScreen() {
             }
         )
     }
+    shiftToCancel?.let { key ->
+        AlertDialog(
+            onDismissRequest = { shiftToCancel = null },
+            title = { Text("Avboka arbetspass?") },
+            text = { Text("Är du säker på att du vill avboka ditt arbetspass?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        bookings[key] = bookings[key].orEmpty()
+                            .filterNot { it.isMe }
+
+                        shiftToCancel = null
+                    }
+                ) {
+                    Text("Avboka pass", color = MissingRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { shiftToCancel = null }) {
+                    Text("Behåll passet")
+                }
+            }
+        )
+    }
 }
 
 // ============================================================
@@ -1128,7 +1163,10 @@ private fun LegendItem(
 @Composable
 private fun ShiftCard(
     type: ShiftType,
-    bookings: List<ShiftBooking>
+    bookings: List<ShiftBooking>,
+    date: LocalDate,
+    isAdmin: Boolean,
+    onCancelClick: (ShiftBooking) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1214,6 +1252,57 @@ private fun ShiftCard(
                                 color = DarkSage,
                                 fontSize = 11.sp
                             )
+                        }
+                        if (booking.isMe) {
+                            Spacer(Modifier.weight(1f))
+
+                            val canCancel = isAdmin ||
+                                    date.isAfter(LocalDate.now().plusDays(7))
+
+                            var showLockMessage by remember { mutableStateOf(false) }
+
+                            Box {
+                                Icon(
+                                    imageVector = if (canCancel) {
+                                        Icons.Outlined.Delete
+                                    } else {
+                                        Icons.Outlined.Lock
+                                    },
+                                    contentDescription = if (canCancel) {
+                                        "Avboka pass"
+                                    } else {
+                                        "Passet är låst"
+                                    },
+                                    tint = if (canCancel) MissingRed else Muted,
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .combinedClickable(
+                                            onClick = {
+                                                if (canCancel) {
+                                                    onCancelClick(booking)
+                                                }
+                                            },
+                                            onLongClick = {
+                                                if (!canCancel) {
+                                                    showLockMessage = true
+                                                }
+                                            }
+                                        )
+                                        .padding(5.dp)
+                                )
+
+                                DropdownMenu(
+                                    expanded = showLockMessage,
+                                    onDismissRequest = { showLockMessage = false }
+                                ) {
+                                    Text(
+                                        text = "Kontakta administratör för att avboka passet.",
+                                        modifier = Modifier.padding(16.dp),
+                                        fontSize = 13.sp,
+                                        color = Ink
+                                    )
+                                }
+                            }
                         }
                     }
                 }
