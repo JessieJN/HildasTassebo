@@ -19,7 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.clickable
 
 @Composable
-fun AdminScreen(adminViewModel: AdminViewModel = viewModel()) {
+fun AdminScreen(onLogout: () -> Unit, adminViewModel: AdminViewModel = viewModel()) {
         val isAdmin by adminViewModel.isAdmin.collectAsState()
         val isLoading by adminViewModel.isLoading.collectAsState()
 
@@ -54,6 +54,9 @@ fun AdminScreen(adminViewModel: AdminViewModel = viewModel()) {
             text = "Administration",
             style = MaterialTheme.typography.headlineMedium
         )
+        TextButton(onClick = onLogout) {
+            Text("Logga ut")
+        }
 
         Text(
             text = "Hantera volontärer",
