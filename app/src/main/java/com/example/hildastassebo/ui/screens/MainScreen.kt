@@ -12,6 +12,7 @@ import androidx.compose.ui.tooling.preview.Preview
 
 import com.example.hildastassebo.ui.navigation.BottomNavigationBar
 import com.google.firebase.auth.FirebaseAuth
+import java.time.LocalDate
 
 @Composable
 fun MainScreen(
@@ -21,6 +22,11 @@ fun MainScreen(
     // Håller reda på vilken flik som är vald
     var selectedTab by remember {
         mutableStateOf("home")
+    }
+
+    // Gemensam lista för evenemang i kalendern och på startsidan
+    val events = remember {
+        mutableStateMapOf<LocalDate, List<CalendarEvent>>()
     }
 
     // Håller reda på om inställningssidan ska visas
@@ -84,11 +90,14 @@ fun MainScreen(
                             .currentUser
                             ?.displayName
                             ?.substringBefore(" ")
-                            ?: "Volontär"
+                            ?: "Volontär",
+                        events = events
                     )
 
                     // KALENDER
-                    "calendar" -> CalendarScreen()
+                    "calendar" -> CalendarScreen(
+                        events = events
+                    )
 
                     // MIN SIDA
                     "profile" -> ProfileScreen(

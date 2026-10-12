@@ -47,7 +47,8 @@ fun HomeScreen(
     userName: String = "Volontär",
     onCalendarClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
-    onNextShiftClick: () -> Unit = {}
+    onNextShiftClick: () -> Unit = {},
+    events: Map<LocalDate, List<CalendarEvent>> = emptyMap()
 ) {
 
     // Styr om popup-fönstret med användarens pass ska visas.
@@ -58,6 +59,15 @@ fun HomeScreen(
     // Tillfälliga exempelbokningar för att kunna testa designen.
     // Senare ersätts dessa med användarens riktiga bokningar från Firebase.
     val today = LocalDate.now()
+
+    // Hittar det närmast kommande evenemanget.
+    val nextEvent = events.values
+        .flatten()
+        .filter { !it.date.isBefore(today) }
+        .minWithOrNull(
+            compareBy<CalendarEvent> { it.date }
+                .thenBy { it.time }
+        )
 
     val bookedShifts = remember(today) {
         listOf(
@@ -201,7 +211,17 @@ fun HomeScreen(
             HomeInfoCard(
                 icon = "campaign",
                 title = "Kommande evenemang",
-                description = "Inga kommande evenemang"
+                description = nextEvent?.let { event ->
+                    val dateText = event.date.format(
+                        DateTimeFormatter.ofPattern(
+                            "d MMMM",
+                            Locale.forLanguageTag("sv-SE")
+                        )
+                    )
+
+                    "${event.title} – $dateText" +
+                            if (event.time.isNotBlank()) " kl. ${event.time}" else ""
+                } ?: "Inga kommande evenemang"
             )
 
             // Information
