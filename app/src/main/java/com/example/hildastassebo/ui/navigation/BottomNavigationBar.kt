@@ -1,8 +1,10 @@
+
 package com.example.hildastassebo.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -16,11 +18,14 @@ fun BottomNavigationBar(
     selectedTab: String,
     onHomeClick: () -> Unit,
     onCalendarClick: () -> Unit,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    onAboutClick: () -> Unit
 ) {
     NavigationBar(
         containerColor = Color.White
     ) {
+
+        // HEM
         NavigationBarItem(
             selected = selectedTab == "home",
             onClick = onHomeClick,
@@ -38,6 +43,7 @@ fun BottomNavigationBar(
             )
         )
 
+        // KALENDER
         NavigationBarItem(
             selected = selectedTab == "calendar",
             onClick = onCalendarClick,
@@ -55,6 +61,7 @@ fun BottomNavigationBar(
             )
         )
 
+        // MIN SIDA
         NavigationBarItem(
             selected = selectedTab == "profile",
             onClick = onProfileClick,
@@ -65,6 +72,24 @@ fun BottomNavigationBar(
                 )
             },
             label = { Text("Min sida") },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = DarkSage,
+                selectedTextColor = DarkSage,
+                indicatorColor = Sage.copy(alpha = 0.2f)
+            )
+        )
+
+        // OM OSS 
+        NavigationBarItem(
+            selected = selectedTab == "about",
+            onClick = onAboutClick,
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "Om"
+                )
+            },
+            label = { Text("Om") },
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = DarkSage,
                 selectedTextColor = DarkSage,
