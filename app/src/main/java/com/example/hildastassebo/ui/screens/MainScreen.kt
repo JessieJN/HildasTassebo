@@ -21,7 +21,8 @@ fun MainScreen() {
                 selectedTab = selectedTab,
                 onHomeClick = { selectedTab = "home" },
                 onCalendarClick = { selectedTab = "calendar" },
-                onProfileClick = { selectedTab = "profile" }
+                onProfileClick = { selectedTab = "profile" },
+                onAboutClick = { selectedTab = "about" }
             )
         }
     ) { innerPadding ->
@@ -44,6 +45,8 @@ fun MainScreen() {
 
                 "profile" -> {
                     // Här lägger vi ProfileScreen senare
+                
+                "about" -> AboutScreen()
                 }
             }
         }
