@@ -67,6 +67,24 @@ fun HomeScreen(
         ).sortedBy { it.date }
     }
 
+    // Hämtar användarens närmast kommande bokade pass.
+    // Använder samma bokningslista som popup-fönstret.
+    // När Firebase kopplas in ska bookedShifts innehålla riktiga bokningar.
+    val nextShift = bookedShifts.firstOrNull { !it.date.isBefore(today) }
+
+    // Skapar texten som ska visas på startsidan.
+    val nextShiftDescription = nextShift?.let { shift ->
+        val formatter = DateTimeFormatter.ofPattern(
+            "EEEE d MMMM",
+            Locale.forLanguageTag("sv-SE")
+        )
+
+        val dateText = shift.date.format(formatter)
+            .replaceFirstChar { it.uppercase() }
+
+        "$dateText – ${shift.period}"
+    } ?: "Inget kommande pass"
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -173,7 +191,7 @@ fun HomeScreen(
             HomeInfoCard(
                 icon = "▦",
                 title = "Ditt nästa pass",
-                description = "Inget kommande pass",
+                description = nextShiftDescription,
                 onClick = {
                     showMyShiftsDialog = true
                 }
