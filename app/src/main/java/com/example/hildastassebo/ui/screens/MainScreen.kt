@@ -51,7 +51,7 @@ fun MainScreen() {
             }
         }
     }
-}
+
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
