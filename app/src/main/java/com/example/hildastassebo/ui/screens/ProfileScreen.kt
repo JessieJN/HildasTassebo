@@ -8,12 +8,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Settings
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
 import com.google.firebase.auth.FirebaseAuth
 
 private val DarkSage = Color(0xFF47796C)
@@ -32,8 +36,11 @@ private val FieldBorder = Color(0xFFD7E2DC)
 
 @Composable
 fun ProfileScreen(
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onSettingsClick: () -> Unit
 ) {
+
+    // Hämta inloggad användare från Firebase
     val user = FirebaseAuth.getInstance().currentUser
 
     val userName = user?.displayName
@@ -42,10 +49,7 @@ fun ProfileScreen(
 
     val email = user?.email ?: ""
 
-    var showSettings by remember {
-        mutableStateOf(false)
-    }
-
+    // Dialog för att bekräfta utloggning
     var showLogoutDialog by remember {
         mutableStateOf(false)
     }
@@ -62,13 +66,17 @@ fun ProfileScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
+        // =====================================
         // PROFILIKON
+        // =====================================
+
         Box(
             modifier = Modifier
                 .size(80.dp)
                 .background(PaleSage, CircleShape),
             contentAlignment = Alignment.Center
         ) {
+
             Icon(
                 imageVector = Icons.Outlined.PersonOutline,
                 contentDescription = null,
@@ -79,6 +87,10 @@ fun ProfileScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        // =====================================
+        // RUBRIK
+        // =====================================
+
         Text(
             text = "Min sida",
             fontSize = 28.sp,
@@ -88,6 +100,10 @@ fun ProfileScreen(
 
         Spacer(Modifier.height(16.dp))
 
+        // =====================================
+        // ANVÄNDARINFORMATION
+        // =====================================
+
         Text(
             text = userName,
             fontSize = 20.sp,
@@ -96,6 +112,7 @@ fun ProfileScreen(
         )
 
         if (email.isNotBlank()) {
+
             Spacer(Modifier.height(4.dp))
 
             Text(
@@ -108,15 +125,22 @@ fun ProfileScreen(
 
         Spacer(Modifier.height(30.dp))
 
-        // STATISTIK
+        // =====================================
+        // STATISTIK ÖVER ARBETSPASS
+        // =====================================
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color.White
             ),
-            border = BorderStroke(1.dp, FieldBorder)
+            border = BorderStroke(
+                1.dp,
+                FieldBorder
+            )
         ) {
+
             Column(
                 modifier = Modifier.padding(20.dp)
             ) {
@@ -140,8 +164,10 @@ fun ProfileScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement =
+                        Arrangement.spacedBy(8.dp)
                 ) {
+
                     ShiftStatCard(
                         label = "Senaste veckan",
                         count = 0,
@@ -160,37 +186,37 @@ fun ProfileScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
-
-                Spacer(Modifier.height(14.dp))
-
-                Text(
-                    text = "Statistiken kopplas till dina " +
-                        "arbetspass i ett senare steg.",
-                    fontSize = 12.sp,
-                    color = Muted
-                )
             }
         }
 
         Spacer(Modifier.height(20.dp))
 
+        // =====================================
         // INSTÄLLNINGAR OCH LOGGA UT
+        // =====================================
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color.White
             ),
-            border = BorderStroke(1.dp, FieldBorder)
+            border = BorderStroke(
+                1.dp,
+                FieldBorder
+            )
         ) {
+
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
 
+                // INSTÄLLNINGAR
                 TextButton(
-                    onClick = { showSettings = true },
+                    onClick = onSettingsClick,
                     modifier = Modifier.fillMaxWidth()
                 ) {
+
                     Icon(
                         imageVector = Icons.Outlined.Settings,
                         contentDescription = null,
@@ -212,12 +238,14 @@ fun ProfileScreen(
                     color = FieldBorder
                 )
 
+                // LOGGA UT
                 TextButton(
                     onClick = {
                         showLogoutDialog = true
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
+
                     Icon(
                         imageVector = Icons.Outlined.Logout,
                         contentDescription = null,
@@ -246,64 +274,45 @@ fun ProfileScreen(
         )
     }
 
-    // TILLFÄLLIG INSTÄLLNINGSDIALOG
-    if (showSettings) {
-        AlertDialog(
-            onDismissRequest = {
-                showSettings = false
-            },
-            title = {
-                Text("Inställningar")
-            },
-            text = {
-                Text(
-                    "Här kommer du senare kunna " +
-                        "hantera dina inställningar."
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showSettings = false
-                    }
-                ) {
-                    Text(
-                        "Stäng",
-                        color = DarkSage
-                    )
-                }
-            }
-        )
-    }
-
+    // =====================================
     // BEKRÄFTA UTLOGGNING
+    // =====================================
+
     if (showLogoutDialog) {
+
         AlertDialog(
             onDismissRequest = {
                 showLogoutDialog = false
             },
+
             title = {
                 Text("Logga ut")
             },
+
             text = {
                 Text(
                     "Är du säker på att du vill logga ut?"
                 )
             },
+
             confirmButton = {
+
                 TextButton(
                     onClick = {
                         showLogoutDialog = false
                         onLogout()
                     }
                 ) {
+
                     Text(
-                        "Logga ut",
+                        text = "Logga ut",
                         color = Color(0xFFB45353)
                     )
                 }
             },
+
             dismissButton = {
+
                 TextButton(
                     onClick = {
                         showLogoutDialog = false
@@ -316,12 +325,17 @@ fun ProfileScreen(
     }
 }
 
+// =====================================
+// STATISTIKKORT
+// =====================================
+
 @Composable
 private fun ShiftStatCard(
     label: String,
     count: Int,
     modifier: Modifier = Modifier
 ) {
+
     Column(
         modifier = modifier
             .background(
@@ -332,8 +346,10 @@ private fun ShiftStatCard(
                 horizontal = 4.dp,
                 vertical = 16.dp
             ),
+
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
         Text(
             text = count.toString(),
             fontSize = 30.sp,
