@@ -52,15 +52,27 @@ class AdminViewModel : ViewModel() {
         userId: String,
         firstName: String,
         lastName: String,
+        role: Long,
         onSuccess: () -> Unit,
         onError: (Exception) -> Unit
     ) {
-        if (!_isAdmin.value) return
+        if (!_isAdmin.value) {
+            onError(Exception("Du saknar administratörsbehörighet."))
+            return
+        }
+
+        if (userId == auth.currentUser?.uid &&
+            role != 1L
+        ) {
+            onError(Exception("Du kan inte ta bort din egen administratörsroll."))
+            return
+        }
 
         volunteerRepository.updateUser(
             userId = userId,
             firstName = firstName,
             lastName = lastName,
+            role = role,
             onSuccess = {
                 loadVolunteers()
                 onSuccess()

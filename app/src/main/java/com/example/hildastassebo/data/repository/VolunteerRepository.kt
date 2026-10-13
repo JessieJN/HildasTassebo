@@ -37,6 +37,7 @@ class VolunteerRepository {
         userId: String,
         firstName: String,
         lastName: String,
+        role: Long,
         onSuccess: () -> Unit,
         onError: (Exception) -> Unit
     ) {
@@ -45,7 +46,8 @@ class VolunteerRepository {
             .update(
                 mapOf(
                     "förnamn" to firstName,
-                    "efternamn" to lastName
+                    "efternamn" to lastName,
+                    "roll" to role
                 )
             )
             .addOnSuccessListener { onSuccess() }

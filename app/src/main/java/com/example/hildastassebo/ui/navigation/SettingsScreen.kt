@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 private val SageGreen = Color(0xFF47796C)
 private val BackgroundColor = Color(0xFFFAFAF7)
@@ -26,6 +27,7 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val auth = remember { FirebaseAuth.getInstance() }
+    val db = remember { FirebaseFirestore.getInstance() }
     val user = auth.currentUser
 
     var newEmail by remember { mutableStateOf("") }
@@ -35,6 +37,44 @@ fun SettingsScreen(
 
     var message by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val activeUser = auth.currentUser ?: return@LaunchedEffect
+
+        activeUser.reload()
+            .addOnSuccessListener {
+                val updatedUser = auth.currentUser
+                val updatedEmail = updatedUser?.email
+                val userId = updatedUser?.uid
+
+                if (
+                    updatedUser?.isEmailVerified == true &&
+                    !updatedEmail.isNullOrBlank() &&
+                    userId != null
+                ) {
+                    updatedUser.getIdToken(true)
+                        .addOnSuccessListener {
+                            db.collection("användare")
+                                .document(userId)
+                                .update("epost", updatedEmail)
+                                .addOnSuccessListener {
+                                    message = "E-postadressen har synkroniserats!"
+                                }
+                                .addOnFailureListener { exception ->
+                                    message = "Firestore-fel: ${exception.localizedMessage}"
+                                }
+                        }
+                        .addOnFailureListener { exception ->
+                            message = "Token-fel: ${exception.localizedMessage}"
+                        }
+                } else {
+                    message = "E-postadressen är inte verifierad."
+                }
+            }
+            .addOnFailureListener { exception ->
+                message = "Reload-fel: ${exception.localizedMessage}"
+            }
+    }
 
     val isEmailAccount = user?.providerData?.any {
         it.providerId == "password"

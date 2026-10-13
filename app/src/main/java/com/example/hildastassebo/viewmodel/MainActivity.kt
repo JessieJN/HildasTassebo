@@ -72,9 +72,30 @@ class MainActivity : ComponentActivity() {
 
                 // Kontrollerar om användaren är inloggad
                 var isLoggedIn by remember {
-                    mutableStateOf(
-                        auth.currentUser != null
-                    )
+                    mutableStateOf(false)
+                }
+
+                var checkingAuth by remember {
+                    mutableStateOf(true)
+                }
+
+                LaunchedEffect(Unit) {
+                    val user = auth.currentUser
+
+                    if (user == null) {
+                        checkingAuth = false
+                    } else {
+                        user.reload().addOnCompleteListener { task ->
+                            if (task.isSuccessful && user.isEmailVerified) {
+                                isLoggedIn = true
+                            } else {
+                                auth.signOut()
+                                isLoggedIn = false
+                            }
+
+                            checkingAuth = false
+                        }
+                    }
                 }
 
                 // Bestämmer om registreringssidan visas
@@ -87,7 +108,14 @@ class MainActivity : ComponentActivity() {
                 // ==================================
 
                 when {
-
+                        checkingAuth -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = androidx.compose.ui.Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
                     // 1. ANVÄNDAREN ÄR INLOGGAD
                     isLoggedIn -> {
 
@@ -124,6 +152,7 @@ class MainActivity : ComponentActivity() {
 
                         LoginScreen(
                             onLoginSuccess = {
+                                syncEmailWithFirestore()
                                 isLoggedIn = true
                             },
                             onRegisterClick = {
@@ -134,6 +163,32 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+}
+fun syncEmailWithFirestore() {
+    val user = FirebaseAuth.getInstance().currentUser ?: return
+    val db = FirebaseFirestore.getInstance()
+
+    user.reload().addOnSuccessListener {
+        val updatedEmail = user.email ?: return@addOnSuccessListener
+
+        if (user.isEmailVerified) {
+            user.getIdToken(true).addOnSuccessListener {
+                db.collection("användare")
+                    .document(user.uid)
+                    .update("epost", updatedEmail)
+                    .addOnSuccessListener {
+                        Log.d("EMAIL_SYNC", "E-post uppdaterad i Firestore!")
+                    }
+                    .addOnFailureListener { exception ->
+                        Log.e("EMAIL_SYNC", "Firestore-fel", exception)
+                    }
+            }.addOnFailureListener { exception ->
+                Log.e("EMAIL_SYNC", "Token-fel", exception)
+            }
+        }
+    }.addOnFailureListener { exception ->
+        Log.e("EMAIL_SYNC", "Kunde inte läsa användaren", exception)
     }
 }
 
