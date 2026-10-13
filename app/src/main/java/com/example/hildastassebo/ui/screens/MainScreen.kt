@@ -50,10 +50,21 @@ fun MainScreen(
                 .collection("användare")
                 .document(userId)
                 .addSnapshotListener { document, error ->
-                    userRole = if (error == null) {
-                        document?.getLong("roll")
+
+                    if (error != null) {
+                        android.util.Log.e(
+                            "HildasFirestore",
+                            "Kunde inte hämta användarroll",
+                            error
+                        )
+                        userRole = null
                     } else {
-                        null
+                        userRole = document?.getLong("roll")
+
+                        android.util.Log.d(
+                            "HildasFirestore",
+                            "Hämtad roll: $userRole, dokument finns: ${document?.exists()}"
+                        )
                     }
                 }
 
@@ -131,8 +142,12 @@ fun MainScreen(
                     // MIN SIDA – olika beroende på användarens roll
                     "profile" -> {
                         when (userRole) {
-                            1L -> AdminScreen(onLogout = onLogout)
-
+                            1L -> AdminScreen(
+                                onLogout = onLogout,
+                                onSettingsClick = {
+                                    showSettings = true
+                                }
+                            )
                             0L -> ProfileScreen(
                                 onLogout = onLogout,
                                 onSettingsClick = {

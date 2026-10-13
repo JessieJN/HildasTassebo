@@ -232,13 +232,29 @@ fun LoginScreen(
                         email.trim(),
                         password
                     ).addOnCompleteListener { task ->
-                        loading = false
-
                         if (task.isSuccessful) {
-                            onLoginSuccess()
+                            val user = auth.currentUser
+
+                            user?.reload()?.addOnCompleteListener { reloadTask ->
+                                if (reloadTask.isSuccessful && user.isEmailVerified) {
+                                    onLoginSuccess()
+                                } else if (reloadTask.isSuccessful) {
+                                    error = "Du måste verifiera din e-postadress innan du kan logga in."
+                                    auth.signOut()
+                                } else {
+                                    error = "Kunde inte kontrollera e-postverifieringen. Försök igen."
+                                    auth.signOut()
+                                }
+                                loading = false
+                            } ?: run {
+                                error = "Kunde inte hitta användaren."
+                                auth.signOut()
+                                loading = false
+                            }
                         } else {
                             error = "Kunde inte logga in. " +
-                                "Kontrollera e-post och lösenord."
+                                    "Kontrollera e-post och lösenord."
+                            loading = false
                         }
                     }
                 },
