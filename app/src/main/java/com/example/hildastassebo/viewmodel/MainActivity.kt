@@ -20,6 +20,11 @@ import com.example.hildastassebo.ui.theme.HildasTasseboTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.hildastassebo.data.repository.syncUserEmail
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,6 +100,27 @@ class MainActivity : ComponentActivity() {
 
                             checkingAuth = false
                         }
+                    }
+                }
+
+                // Synkroniserar användarens e-postadress mellan Firebase Authentication och Firestore.
+                // Kontrollen körs när användaren öppnar eller återgår till appen.
+                // Detta behövs eftersom en ny e-postadress inte uppdateras förrän
+                // användaren har bekräftat den via verifieringsmejlet.
+                // Användaren förblir inloggad under processen.
+                val lifecycleOwner = LocalLifecycleOwner.current
+
+                DisposableEffect(lifecycleOwner, isLoggedIn) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME && isLoggedIn) {
+                            syncUserEmail()
+                        }
+                    }
+
+                    lifecycleOwner.lifecycle.addObserver(observer)
+
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
                     }
                 }
 
