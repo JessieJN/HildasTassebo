@@ -29,6 +29,23 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hildastassebo.PawPrint
+import com.example.hildastassebo.data.model.CalendarEvent
+import com.example.hildastassebo.data.model.CalendarNote
+import com.example.hildastassebo.data.model.ShiftBooking
+import com.example.hildastassebo.data.model.ShiftKey
+import com.example.hildastassebo.data.model.ShiftType
+import com.example.hildastassebo.ui.screens.calendar.CalendarMode
+import com.example.hildastassebo.ui.screens.calendar.ShiftListFilter
+import com.example.hildastassebo.ui.screens.calendar.CalendarModeSelector
+import com.example.hildastassebo.ui.screens.calendar.WeekCalendar
+import com.example.hildastassebo.ui.screens.calendar.MonthCalendar
+import com.example.hildastassebo.ui.screens.calendar.ShiftLegend
+import com.example.hildastassebo.ui.screens.calendar.ShiftCard
+import com.example.hildastassebo.ui.screens.calendar.ShiftListFilterSelector
+import com.example.hildastassebo.ui.screens.calendar.UpcomingShiftCard
+import com.example.hildastassebo.ui.screens.calendar.CalendarShiftDialogs
+import com.example.hildastassebo.ui.screens.calendar.CalendarEventDialogs
+import com.example.hildastassebo.ui.screens.calendar.CalendarNoteDialogs
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.LocalDateTime
@@ -41,7 +58,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 
 // ============================================================
-// 1. FÄRGER OCH GRUNDINSTÄLLNINGAR (befintlig design)
+// FÄRGER OCH GRUNDINSTÄLLNINGAR
 // ============================================================
 private val Sage = Color(0xFF91B1A3)
 private val DarkSage = Color(0xFF47796C)
@@ -54,55 +71,9 @@ private val NeedsMoreOrange = Color(0xFFE9A34A)
 
 private val Swedish = Locale.forLanguageTag("sv-SE")
 
-// ============================================================
-// 2. DATAMODELLER FÖR KALENDER, PASS OCH ANTECKNINGAR
-// ============================================================
-private enum class CalendarMode {
-    WEEK, MONTH, LIST
-}
-
-// Filter används bara i listvyn och påverkar inte vecka/månad.
-private enum class ShiftListFilter(val label: String) {
-    ALL("Alla pass"), AVAILABLE("Lediga pass"), MINE("Mina pass")
-}
-
-private enum class ShiftType(val label: String) {
-    MORNING("Förmiddag"),
-    AFTERNOON("Eftermiddag")
-}
-
-private data class ShiftBooking(
-    val name: String,
-    val isMe: Boolean = false,
-    val wantsToWorkAlone: Boolean = false
-)
-
-private data class ShiftKey(
-    val date: LocalDate,
-    val type: ShiftType
-)
-
-// En anteckning har ett unikt ID, författare och skapandetid.
-// authorId används för att avgöra vem som får redigera/radera.
-private data class CalendarNote(
-    val id: String,
-    val text: String,
-    val authorId: String,
-    val authorName: String,
-    val createdAt: LocalDateTime
-)
-
-// Representerar ett evenemang kopplat till ett datum.
-data class CalendarEvent(
-    val id: String,
-    val date: LocalDate,
-    val title: String,
-    val description: String,
-    val time: String
-)
 
 // ============================================================
-// 3. HUVUDSKÄRM: TILLSTÅND, KALENDER OCH DIALOGRUTOR
+// HUVUDSKÄRM: TILLSTÅND, KALENDER OCH DIALOGRUTOR
 // ============================================================
 @Composable
 fun CalendarScreen(
@@ -203,8 +174,10 @@ fun CalendarScreen(
             .fillMaxSize()
             .background(Color.White)
     ) {
+
+
         // ------------------------------------------------------------
-        // 3A. SIDHUVUD (oförändrat)
+        // SIDHUVUD
         // ------------------------------------------------------------
         // Samma sidhuvud som på startsidan
         Column(
@@ -242,7 +215,7 @@ fun CalendarScreen(
         }
 
         // ------------------------------------------------------------
-        // 3B. KALENDER: lägesval, veckor/månader och arbetspass
+        // KALENDER: lägesval, veckor/månader och arbetspass
         // ------------------------------------------------------------
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -371,7 +344,7 @@ fun CalendarScreen(
 
                 CalendarMode.LIST -> {
                     // ----------------------------------------------------
-                    // 3C. LISTVY: kommande pass, filter och snabbnavigering
+                    // LISTVY: kommande pass, filter och snabbnavigering
                     // Visar två veckor från valt datum (inte tidigare än idag).
                     // Pilarna ovan flyttar listans startdatum en vecka.
                     // ----------------------------------------------------
@@ -459,8 +432,9 @@ fun CalendarScreen(
                     )
                 }
 
+
                 // ----------------------------------------------------
-                // 3D. BEFINTLIG BOKNINGSKNAPP
+                //  BEFINTLIG BOKNINGSKNAPP
                 // ----------------------------------------------------
                 item {
                     Button(
@@ -490,6 +464,8 @@ fun CalendarScreen(
                         )
                     }
                 }
+
+
                 // ----------------------------------------------------
                 // EVENEMANG FÖR VALT DATUM
                 // ----------------------------------------------------
@@ -613,8 +589,9 @@ fun CalendarScreen(
                                     }
                                 }
 
+
                 // ----------------------------------------------------
-                // 3C. ANTECKNINGAR FÖR VALT DATUM
+                // ANTECKNINGAR FÖR VALT DATUM
                 // ----------------------------------------------------
                 item {
                     Column(
@@ -701,10 +678,8 @@ fun CalendarScreen(
                 }
 
 
-
-
                 // ----------------------------------------------------
-                // 3E. NY SEKUNDÄR KNAPP FÖR ANTECKNINGAR
+                // KNAPP FÖR ANTECKNINGAR
                 // ----------------------------------------------------
                 item {
                     OutlinedButton(
@@ -730,977 +705,55 @@ fun CalendarScreen(
         }
     }
 
-    // ------------------------------------------------------------
-    // 3F. BEFINTLIG BOKNINGSDIALOG (oförändrad)
-    // ------------------------------------------------------------
-    bookingDialog?.let { initialType ->
-        var chosenType by remember(initialType) {
-            mutableStateOf(initialType)
-        }
-
-        val currentBookings =
-            bookings[ShiftKey(selectedDate, chosenType)].orEmpty()
-
-        val alreadyBooked = currentBookings.any { it.isMe }
-        val someoneWantsAlone =
-            currentBookings.any { it.wantsToWorkAlone }
-
-        AlertDialog(
-            onDismissRequest = { bookingDialog = null },
-            title = { Text("Boka arbetspass") },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        selectedDate.format(dateFormatter)
-                            .replaceFirstChar { it.uppercase() }
-                    )
-
-                    Text(
-                        "Välj pass",
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    ShiftType.entries.forEach { type ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { chosenType = type }
-                        ) {
-                            RadioButton(
-                                selected = chosenType == type,
-                                onClick = { chosenType = type }
-                            )
-
-                            Text(type.label)
-                        }
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = wantsToWorkAlone,
-                            onCheckedChange = {
-                                wantsToWorkAlone = it
-                            },
-                            enabled = currentBookings.isEmpty()
-                        )
-
-                        Text(
-                            text = "Jag önskar arbeta ensam",
-                            fontSize = 14.sp
-                        )
-                    }
-
-                    if (currentBookings.isNotEmpty()) {
-                        Text(
-                            text = "Önskemål om att arbeta ensam kan bara väljas när ingen annan är bokad.",
-                            color = Muted,
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    if (someoneWantsAlone) {
-                        Text(
-                            text = "En volontär har önskat att arbeta ensam på detta pass.",
-                            color = DarkSage,
-                            fontSize = 13.sp
-                        )
-                    }
-
-                    if (alreadyBooked) {
-                        Text(
-                            text = "Du är redan bokad på detta pass.",
-                            color = MissingRed,
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = !alreadyBooked && !someoneWantsAlone,
-                    onClick = {
-                        val key = ShiftKey(selectedDate, chosenType)
-
-                        bookings[key] = currentBookings +
-                                ShiftBooking(
-                                    name = "Jessie",
-                                    isMe = true,
-                                    wantsToWorkAlone =
-                                        wantsToWorkAlone &&
-                                                currentBookings.isEmpty()
-                                )
-
-                        bookingDialog = null
-                    }
-                ) {
-                    Text("Bekräfta")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { bookingDialog = null }
-                ) {
-                    Text("Avbryt")
-                }
-            }
-        )
-    }
-
-    // ------------------------------------------------------------
-    // DIALOG: LÄGG TILL EVENEMANG
-    // ------------------------------------------------------------
-    if (showEventDialog) {
-        AlertDialog(
-            onDismissRequest = { showEventDialog = false },
-            title = {
-                Text("Lägg till evenemang")
-            },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = selectedDate.format(dateFormatter)
-                            .replaceFirstChar { it.uppercase() },
-                        color = Muted
-                    )
-
-                    OutlinedTextField(
-                        value = eventTitle,
-                        onValueChange = { eventTitle = it },
-                        label = { Text("Evenemangets namn") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = eventTime,
-                        onValueChange = { eventTime = it },
-                        label = { Text("Tid (t.ex. 13:00–16:00)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = eventDescription,
-                        onValueChange = { eventDescription = it },
-                        label = { Text("Beskrivning") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 2,
-                        maxLines = 4
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = eventTitle.isNotBlank(),
-
-                    onClick = {
-                        val existing = events[selectedDate].orEmpty()
-                        val edit = editingEvent
-
-                        if (edit == null) {
-                            // Skapa ett nytt evenemang
-                            val newEvent = CalendarEvent(
-                                id = UUID.randomUUID().toString(),
-                                date = selectedDate,
-                                title = eventTitle.trim(),
-                                description = eventDescription.trim(),
-                                time = eventTime.trim()
-                            )
-
-                            events[selectedDate] = existing + newEvent
-                        } else {
-                            // Uppdatera det befintliga evenemanget
-                            events[selectedDate] = existing.map { event ->
-                                if (event.id == edit.id) {
-                                    event.copy(
-                                        title = eventTitle.trim(),
-                                        description = eventDescription.trim(),
-                                        time = eventTime.trim()
-                                    )
-                                } else {
-                                    event
-                                }
-                            }
-                        }
-
-                        showEventDialog = false
-                        editingEvent = null
-                    }
-
-                ) {
-                    Text("Spara", color = DarkSage)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showEventDialog = false }
-                ) {
-                    Text("Avbryt")
-                }
-            }
-        )
-    }
-
-
-    // ----------------------------------------------------
-    // BEKRÄFTELSE INNAN ETT EVENEMANG RADERAS
-    // ----------------------------------------------------
-    eventToDelete?.let { event ->
-        AlertDialog(
-            onDismissRequest = {
-                eventToDelete = null
-            },
-            title = {
-                Text("Ta bort evenemang?")
-            },
-            text = {
-                Text("Vill du verkligen ta bort evenemanget \"${event.title}\"?")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        events[event.date] = events[event.date]
-                            .orEmpty()
-                            .filterNot { it.id == event.id }
-
-                        eventToDelete = null
-                    }
-                ) {
-                    Text(
-                        text = "Ta bort",
-                        color = MissingRed
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        eventToDelete = null
-                    }
-                ) {
-                    Text("Avbryt")
-                }
-            }
-        )
-    }
-
-
-    // ------------------------------------------------------------
-    // 3G. DIALOG: SKAPA ELLER REDIGERA EN ANTECKNING
-    // ------------------------------------------------------------
-    if (showNoteDialog) {
-        AlertDialog(
-            onDismissRequest = { showNoteDialog = false },
-            title = {
-                Text(if (editingNote == null) "Lägg till anteckning" else "Redigera anteckning")
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        selectedDate.format(dateFormatter)
-                            .replaceFirstChar { it.uppercase() },
-                        color = Muted
-                    )
-                    OutlinedTextField(
-                        value = noteText,
-                        onValueChange = { noteText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Anteckning") },
-                        minLines = 3,
-                        maxLines = 6
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = noteText.isNotBlank() && currentUserId.isNotEmpty(),
-                    onClick = {
-                        val existing = notes[selectedDate].orEmpty()
-                        val edit = editingNote
-                        if (edit == null) {
-                            notes[selectedDate] = existing + CalendarNote(
-                                id = UUID.randomUUID().toString(),
-                                text = noteText.trim(),
-                                authorId = currentUserId,
-                                authorName = currentUserName,
-                                createdAt = LocalDateTime.now()
-                            )
-                        } else if (edit.authorId == currentUserId || isAdmin) {
-                            // Behåll ursprunglig signatur och tid vid redigering.
-                            notes[selectedDate] = existing.map { note ->
-                                if (note.id == edit.id) note.copy(text = noteText.trim())
-                                else note
-                            }
-                        }
-                        showNoteDialog = false
-                        editingNote = null
-                        noteText = ""
-                    }
-                ) {
-                    Text("Spara")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNoteDialog = false }) {
-                    Text("Avbryt")
-                }
-            }
-        )
-    }
-
-    // ------------------------------------------------------------
-    // 3H. BEKRÄFTELSE INNAN EN ANTECKNING RADERAS
-    // ------------------------------------------------------------
-    noteToDelete?.let { note ->
-        AlertDialog(
-            onDismissRequest = { noteToDelete = null },
-            title = { Text("Ta bort anteckning?") },
-            text = { Text("Vill du verkligen ta bort den här anteckningen?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (note.authorId == currentUserId || isAdmin) {
-                        notes[selectedDate] = notes[selectedDate].orEmpty()
-                            .filterNot { it.id == note.id }
-                    }
-                    noteToDelete = null
-                }) {
-                    Text("Ta bort", color = MissingRed)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { noteToDelete = null }) {
-                    Text("Avbryt")
-                }
-            }
-        )
-    }
-    shiftToCancel?.let { key ->
-        AlertDialog(
-            onDismissRequest = { shiftToCancel = null },
-            title = { Text("Avboka arbetspass?") },
-            text = { Text("Är du säker på att du vill avboka ditt arbetspass?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        bookings[key] = bookings[key].orEmpty()
-                            .filterNot { it.isMe }
-
-                        shiftToCancel = null
-                    }
-                ) {
-                    Text("Avboka pass", color = MissingRed)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { shiftToCancel = null }) {
-                    Text("Behåll passet")
-                }
-            }
-        )
-    }
-}
-
-// ============================================================
-// 4. VÄLJARE FÖR VECKA / MÅNAD / LISTA
-// ============================================================
-@Composable
-private fun CalendarModeSelector(
-    selected: CalendarMode,
-    onSelect: (CalendarMode) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
-    ) {
-        listOf(
-            CalendarMode.WEEK to "Vecka",
-            CalendarMode.MONTH to "Månad",
-            CalendarMode.LIST to "Lista"
-        ).forEach { (mode, label) ->
-            val active = selected == mode
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .background(
-                        if (active) Sage else Color(0xFFF3F6F4),
-                        RoundedCornerShape(12.dp)
-                    )
-                    .clickable { onSelect(mode) }
-                    .padding(vertical = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = label,
-                    color = if (active) Color.White else Ink,
-                    fontWeight = if (active) {
-                        FontWeight.SemiBold
-                    } else {
-                        FontWeight.Normal
-                    }
-                )
-            }
-        }
-    }
-}
-
-
-
-// ============================================================
-// 5. VECKOVY: DATUM OCH FM/EM-PRICKAR
-// ============================================================
-@Composable
-private fun WeekCalendar(
-    weekStart: LocalDate,
-    selectedDate: LocalDate,
-    bookings: Map<ShiftKey, List<ShiftBooking>>,
-    onDateSelected: (LocalDate) -> Unit
-) {
-    val days = (0..6).map {
-        weekStart.plusDays(it.toLong())
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // FM och EM till vänster om kalendern
-        Column(
-            modifier = Modifier.width(30.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
-            // Samma höjd som veckodag + datum
-            Spacer(modifier = Modifier.height(65.dp))
-
-            Box(
-                modifier = Modifier.height(30.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Text(
-                    text = "FM",
-                    fontSize = 12.sp,
-                    color = Ink
-                )
-            }
-
-            Box(
-                modifier = Modifier.height(30.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Text(
-                    text = "EM",
-                    fontSize = 12.sp,
-                    color = Ink
-                )
-            }
-        }
-
-        // Veckans sju dagar
-        days.forEach { date ->
-            val isSelected = date == selectedDate
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .background(
-                        color = if (isSelected) PaleSage
-                        else Color.Transparent,
-                        shape = RoundedCornerShape(14.dp)
-                    )
-                    .clickable { onDateSelected(date) }
-                    .padding(vertical = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = date.format(
-                        DateTimeFormatter.ofPattern("EEE", Swedish)
-                    ).replaceFirstChar { it.uppercase() },
-                    fontSize = 11.sp,
-                    color = Muted
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = date.dayOfMonth.toString(),
-                    fontSize = 15.sp,
-                    fontWeight = if (isSelected) {
-                        FontWeight.Bold
-                    } else {
-                        FontWeight.Normal
-                    },
-                    color = Ink
-                )
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // Förmiddagens färgprick
-                Box(
-                    modifier = Modifier.height(30.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    StatusDot(
-                        bookings = bookings[
-                            ShiftKey(date, ShiftType.MORNING)
-                        ].orEmpty()
-                    )
-                }
-
-                // Eftermiddagens färgprick
-                Box(
-                    modifier = Modifier.height(30.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    StatusDot(
-                        bookings = bookings[
-                            ShiftKey(date, ShiftType.AFTERNOON)
-                        ].orEmpty()
-                    )
-                }
-            }
-        }
-    }
-}
-
-
-
-// ============================================================
-// 6. MÅNADSVY: DATUM OCH STATUSPRICKAR
-// ============================================================
-@Composable
-private fun MonthCalendar(
-    selectedDate: LocalDate,
-    bookings: Map<ShiftKey, List<ShiftBooking>>,
-    onDateSelected: (LocalDate) -> Unit
-) {
-    val firstDay = selectedDate.withDayOfMonth(1)
-    val offset = firstDay.dayOfWeek.value - 1
-    val totalCells = ((offset + firstDay.lengthOfMonth() + 6) / 7) * 7
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Row {
-            listOf("Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön")
-                .forEach { day ->
-                    Text(
-                        text = day,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        fontSize = 12.sp,
-                        color = Muted
-                    )
-                }
-        }
-
-        repeat(totalCells / 7) { rowIndex ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                repeat(7) { columnIndex ->
-                    val index = rowIndex * 7 + columnIndex
-                    val date = firstDay.plusDays(
-                        (index - offset).toLong()
-                    )
-
-                    val inMonth =
-                        date.month == firstDay.month &&
-                                date.year == firstDay.year
-
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(65.dp)
-                            .background(
-                                if (date == selectedDate) {
-                                    PaleSage
-                                } else {
-                                    Color.White
-                                },
-                                RoundedCornerShape(12.dp)
-                            )
-                            .then(
-                                if (inMonth) {
-                                    Modifier.clickable {
-                                        onDateSelected(date)
-                                    }
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            .padding(4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = date.dayOfMonth.toString(),
-                            fontWeight = if (date == selectedDate) {
-                                FontWeight.Bold
-                            } else {
-                                FontWeight.Normal
-                            },
-                            color = if (inMonth) Ink else FieldBorder,
-                            fontSize = 14.sp
-                        )
-
-                        Spacer(Modifier.height(7.dp))
-
-                        if (inMonth) {
-                            Row(
-                                horizontalArrangement =
-                                    Arrangement.spacedBy(4.dp)
-                            ) {
-                                ShiftType.entries.forEach { type ->
-                                    StatusDot(
-                                        bookings = bookings[
-                                            ShiftKey(date, type)
-                                        ].orEmpty(),
-                                        size = 7
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ============================================================
-// 7. STATUSPRICKAR: RÖD / ORANGE / GRÖN
-// ============================================================
-@Composable
-private fun StatusDot(
-    bookings: List<ShiftBooking>,
-    size: Int = 11
-) {
-    val color = when {
-        bookings.isEmpty() -> MissingRed
-        bookings.any { it.wantsToWorkAlone } -> DarkSage
-        else -> NeedsMoreOrange
-    }
-
-    Box(
-        modifier = Modifier
-            .size(size.dp)
-            .background(color, CircleShape)
+    // Dialogernas originalkod ligger nu i respektive kalenderfil.
+    // Tillståndet ägs fortfarande av CalendarScreen, så beteendet är oförändrat.
+    CalendarShiftDialogs(
+        selectedDate = selectedDate,
+        dateFormatter = dateFormatter,
+        bookings = bookings,
+        bookingDialog = bookingDialog,
+        onBookingDialogChange = { bookingDialog = it },
+        shiftToCancel = shiftToCancel,
+        onShiftToCancelChange = { shiftToCancel = it },
+        wantsToWorkAlone = wantsToWorkAlone,
+        onWantsToWorkAloneChange = { wantsToWorkAlone = it }
     )
+    CalendarEventDialogs(
+        selectedDate = selectedDate,
+        dateFormatter = dateFormatter,
+        events = events,
+        showEventDialog = showEventDialog,
+        onShowEventDialogChange = { showEventDialog = it },
+        eventTitle = eventTitle,
+        onEventTitleChange = { eventTitle = it },
+        eventDescription = eventDescription,
+        onEventDescriptionChange = { eventDescription = it },
+        eventTime = eventTime,
+        onEventTimeChange = { eventTime = it },
+        editingEvent = editingEvent,
+        onEditingEventChange = { editingEvent = it },
+        eventToDelete = eventToDelete,
+        onEventToDeleteChange = { eventToDelete = it }
+    )
+    CalendarNoteDialogs(
+        selectedDate = selectedDate,
+        dateFormatter = dateFormatter,
+        notes = notes,
+        showNoteDialog = showNoteDialog,
+        onShowNoteDialogChange = { showNoteDialog = it },
+        noteText = noteText,
+        onNoteTextChange = { noteText = it },
+        editingNote = editingNote,
+        onEditingNoteChange = { editingNote = it },
+        noteToDelete = noteToDelete,
+        onNoteToDeleteChange = { noteToDelete = it },
+        currentUserId = currentUserId,
+        currentUserName = currentUserName,
+        isAdmin = isAdmin
+    )
+
 }
 
-// ============================================================
-// 8. FÖRKLARING AV STATUSFÄRGERNA
-// ============================================================
-@Composable
-private fun ShiftLegend() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Color(0xFFF3F6F4),
-                RoundedCornerShape(14.dp)
-            )
-            .padding(horizontal = 8.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        LegendItem(MissingRed, "Ingen bokad")
-        LegendItem(NeedsMoreOrange, "Fler önskas")
-        LegendItem(DarkSage, "Arbetar ensam")
-    }
-}
-
-@Composable
-private fun LegendItem(
-    color: Color,
-    label: String
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(11.dp)
-                .background(color, CircleShape)
-        )
-
-        Spacer(Modifier.width(8.dp))
-
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            color = Ink
-        )
-    }
-}
-
-// ============================================================
-// 9. ARBETSPASSKORT: FÖRMIDDAG / EFTERMIDDAG
-// ============================================================
-@Composable
-private fun ShiftCard(
-    type: ShiftType,
-    bookings: List<ShiftBooking>,
-    date: LocalDate,
-    isAdmin: Boolean,
-    onCancelClick: (ShiftBooking) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        border = BorderStroke(1.dp, FieldBorder)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = if (type == ShiftType.MORNING) {
-                        Icons.Outlined.WbSunny
-                    } else {
-                        Icons.Outlined.NightsStay
-                    },
-                    contentDescription = null,
-                    tint = DarkSage,
-                    modifier = Modifier.size(27.dp)
-                )
-
-                Spacer(Modifier.width(12.dp))
-
-                Text(
-                    text = type.label,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = Ink,
-                    modifier = Modifier.weight(1f)
-                )
-
-                StatusDot(bookings)
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            if (bookings.isEmpty()) {
-                Text(
-                    text = "Ingen är bokad på detta pass",
-                    fontSize = 14.sp,
-                    color = Muted
-                )
-            } else {
-                bookings.forEach { booking ->
-                    Row(
-                        modifier = Modifier.padding(vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .background(PaleSage, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = booking.name.take(1),
-                                color = DarkSage,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Spacer(Modifier.width(10.dp))
-
-                        Text(
-                            text = booking.name +
-                                    if (booking.isMe) " (Du)" else "",
-                            color = Ink,
-                            fontSize = 14.sp
-                        )
-
-                        if (booking.wantsToWorkAlone) {
-                            Spacer(Modifier.width(8.dp))
-
-                            Text(
-                                text = "Önskar arbeta ensam",
-                                color = DarkSage,
-                                fontSize = 11.sp
-                            )
-                        }
-                        if (booking.isMe) {
-                            Spacer(Modifier.weight(1f))
-
-                            val canCancel = isAdmin ||
-                                    date.isAfter(LocalDate.now().plusDays(7))
-
-                            var showLockMessage by remember { mutableStateOf(false) }
-
-                            Box {
-                                Icon(
-                                    imageVector = if (canCancel) {
-                                        Icons.Outlined.Delete
-                                    } else {
-                                        Icons.Outlined.Lock
-                                    },
-                                    contentDescription = if (canCancel) {
-                                        "Avboka pass"
-                                    } else {
-                                        "Passet är låst"
-                                    },
-                                    tint = if (canCancel) MissingRed else Muted,
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .combinedClickable(
-                                            onClick = {
-                                                if (canCancel) {
-                                                    onCancelClick(booking)
-                                                }
-                                            },
-                                            onLongClick = {
-                                                if (!canCancel) {
-                                                    showLockMessage = true
-                                                }
-                                            }
-                                        )
-                                        .padding(5.dp)
-                                )
-
-                                DropdownMenu(
-                                    expanded = showLockMessage,
-                                    onDismissRequest = { showLockMessage = false }
-                                ) {
-                                    Text(
-                                        text = "Kontakta administratör för att avboka passet.",
-                                        modifier = Modifier.padding(16.dp),
-                                        fontSize = 13.sp,
-                                        color = Ink
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ============================================================
-// 10. LISTVY: FILTER OCH KORT FÖR KOMMANDE ARBETSPASS
-// Påverkar inte de befintliga kalender- eller bokningskorten.
-// ============================================================
-@Composable
-private fun ShiftListFilterSelector(
-    selected: ShiftListFilter,
-    onSelect: (ShiftListFilter) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
-    ) {
-        ShiftListFilter.entries.forEach { filter ->
-            val active = selected == filter
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .background(
-                        if (active) Sage else Color(0xFFF3F6F4),
-                        RoundedCornerShape(12.dp)
-                    )
-                    .clickable { onSelect(filter) }
-                    .padding(vertical = 12.dp, horizontal = 2.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = filter.label,
-                    color = if (active) Color.White else Ink,
-                    fontSize = 12.sp,
-                    textAlign = TextAlign.Center,
-                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun UpcomingShiftCard(
-    date: LocalDate,
-    type: ShiftType,
-    bookings: List<ShiftBooking>,
-    onClick: () -> Unit
-) {
-    val dateLabel = remember(date) {
-        date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Swedish))
-            .replaceFirstChar { it.uppercase() }
-    }
-    val statusText = when {
-        bookings.isEmpty() -> "Ingen bokad"
-        bookings.any { it.wantsToWorkAlone } -> "Arbetar ensam"
-        else -> "Fler önskas"
-    }
-    val names = if (bookings.isEmpty()) {
-        "Ingen bokad"
-    } else {
-        bookings.joinToString(", ") { booking ->
-            booking.name + if (booking.isMe) " (Du)" else ""
-        }
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, FieldBorder)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = dateLabel,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = Ink,
-                    modifier = Modifier.weight(1f)
-                )
-                StatusDot(bookings)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = if (type == ShiftType.MORNING) {
-                        Icons.Outlined.WbSunny
-                    } else {
-                        Icons.Outlined.NightsStay
-                    },
-                    contentDescription = null,
-                    tint = DarkSage,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(type.label, color = Ink, fontWeight = FontWeight.Medium)
-                Spacer(Modifier.weight(1f))
-                Text(statusText, color = Muted, fontSize = 12.sp)
-            }
-            Text(text = names, fontSize = 14.sp, color = Muted)
-        }
-    }
-}
-
-// ============================================================
-// 11. PREVIEW I ANDROID STUDIO
-// ============================================================
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun CalendarScreenPreview() {

@@ -12,10 +12,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 
 import com.example.hildastassebo.ui.navigation.BottomNavigationBar
+import com.example.hildastassebo.data.model.CalendarEvent
 import com.google.firebase.auth.FirebaseAuth
 import java.time.LocalDate
 import com.google.firebase.firestore.FirebaseFirestore
 import androidx.compose.runtime.DisposableEffect
+
 
 @Composable
 fun MainScreen(

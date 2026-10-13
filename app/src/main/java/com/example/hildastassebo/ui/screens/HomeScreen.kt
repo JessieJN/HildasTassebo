@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hildastassebo.R
+import com.example.hildastassebo.data.model.CalendarEvent
 import com.example.hildastassebo.PawPrint
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
