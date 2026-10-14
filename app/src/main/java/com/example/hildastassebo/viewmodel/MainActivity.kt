@@ -1,5 +1,4 @@
-
-package com.example.hildastassebo
+package com.example.hildastassebo.viewmodel
 
 import android.os.Bundle
 import android.util.Log
@@ -11,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 
@@ -23,6 +23,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.hildastassebo.RegisterScreen
 import com.example.hildastassebo.data.repository.syncUserEmail
 import com.example.hildastassebo.ui.screens.LoginScreen
 
@@ -138,7 +139,7 @@ class MainActivity : ComponentActivity() {
                         checkingAuth -> {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
-                                contentAlignment = androidx.compose.ui.Alignment.Center
+                                contentAlignment = Alignment.Center
                             ) {
                                 CircularProgressIndicator()
                             }
