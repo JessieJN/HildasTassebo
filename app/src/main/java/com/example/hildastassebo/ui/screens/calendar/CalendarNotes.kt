@@ -77,7 +77,8 @@ internal fun CalendarNoteDialogs(
                                 text = noteText.trim(),
                                 authorId = currentUserId,
                                 authorName = currentUserName,
-                                createdAt = LocalDateTime.now()
+                                createdAt = LocalDateTime.now(),
+                                isAdminNote = isAdmin
                             )
                         } else if (edit.authorId == currentUserId || isAdmin) {
                             // Behåll ursprunglig signatur och tid vid redigering.

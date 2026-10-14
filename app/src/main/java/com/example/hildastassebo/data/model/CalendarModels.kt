@@ -21,5 +21,6 @@ data class CalendarNote(
     val text: String,
     val authorId: String,
     val authorName: String,
-    val createdAt: LocalDateTime
+    val createdAt: LocalDateTime,
+    val isAdminNote: Boolean = false
 )

@@ -43,8 +43,9 @@ private val FieldBorder = Color(0xFFD7E2DC)
     fun AdminScreen(
         onLogout: () -> Unit,
         onSettingsClick: () -> Unit,
+        onStatisticsClick: () -> Unit,
         adminViewModel: AdminViewModel = viewModel()
-    ) {
+    ){
         var showLogoutDialog by remember {
             mutableStateOf(false)
         }
@@ -318,10 +319,16 @@ private val FieldBorder = Color(0xFFD7E2DC)
                 }
             }
         }
-        Text(
-            text = "Statistik över arbetade pass",
-            style = MaterialTheme.typography.titleLarge
-        )
+        OutlinedButton(
+            onClick = onStatisticsClick,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text(
+                text = "Visa statistik över arbetspass",
+                color = DarkSage
+            )
+        }
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),

@@ -38,6 +38,9 @@ fun MainScreen(
     var showSettings by remember {
         mutableStateOf(false)
     }
+    var showStatistics by remember {
+        mutableStateOf(false)
+    }
     // Hämtar inloggad användares roll från Firebase
     var userRole by remember { mutableStateOf<Long?>(null) }
 
@@ -87,21 +90,25 @@ fun MainScreen(
                 onHomeClick = {
                     selectedTab = "home"
                     showSettings = false
+                    showStatistics = false
                 },
 
                 onCalendarClick = {
                     selectedTab = "calendar"
                     showSettings = false
+                    showStatistics = false
                 },
 
                 onProfileClick = {
                     selectedTab = "profile"
                     showSettings = false
+                    showStatistics = false
                 },
 
                 onAboutClick = {
                     selectedTab = "about"
                     showSettings = false
+                    showStatistics = false
                 }
             )
         }
@@ -119,6 +126,15 @@ fun MainScreen(
                 SettingsScreen(
                     onBack = {
                         showSettings = false
+                    }
+                )
+
+            } else if (showStatistics && userRole == 1L) {
+
+                StatisticsScreen(
+                    onBack = {
+                        showStatistics = false
+                        selectedTab = "profile"
                     }
                 )
 
@@ -148,6 +164,9 @@ fun MainScreen(
                                 onLogout = onLogout,
                                 onSettingsClick = {
                                     showSettings = true
+                                },
+                                onStatisticsClick = {
+                                    showStatistics = true
                                 }
                             )
                             0L -> ProfileScreen(
