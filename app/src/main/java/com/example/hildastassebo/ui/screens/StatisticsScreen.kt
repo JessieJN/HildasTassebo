@@ -23,31 +23,66 @@ import com.example.hildastassebo.viewmodel.AdminViewModel
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 
-
+// =====================================
+// FÄRGER
+// =====================================
 private val DarkSage = Color(0xFF47796C)
 private val PaleSage = Color(0xFFE7F0EB)
 private val Background = Color(0xFFFAFAF7)
 private val Ink = Color(0xFF20242C)
 private val Muted = Color(0xFF7D8793)
 
+// =====================================
+// STATISTIKSKÄRM
+// =====================================
 @Composable
 fun StatisticsScreen(onBack: () -> Unit) {
+    // =====================================
+    // VIEWMODEL OCH ANVÄNDARDATA
+    // =====================================
+
+    // Hämtar användarlistan från AdminViewModel
     val adminViewModel: AdminViewModel = viewModel()
     val volunteers by adminViewModel.volunteers.collectAsState()
+    // Hämtar den inloggade användarens ID
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
+    // =====================================
+    // TILLSTÅND FÖR ANVÄNDARVAL
+    // =====================================
+
+    // Den valda användarens ID
+    // Standard är den inloggade användaren
     var selectedVolunteerId by remember {
         mutableStateOf(currentUserId)
     }
+
+
+    // Namnet som visas i dropdown-knappen
     var selectedVolunteer by remember { mutableStateOf("Mina arbetspass") }
+
+    // Styr om dropdown-menyn är öppen
     var volunteerMenuExpanded by remember { mutableStateOf(false) }
+
+    // Texten som används för att söka användare
+    var volunteerSearchQuery by remember {
+        mutableStateOf("")
+    }
+
+    // =====================================
+    // SIDANS HUVUDLAYOUT
+    // =====================================
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Background)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    )
+    // =====================================
+    // TILLBAKA-KNAPP
+    // =====================================
+    {
         TextButton(
             onClick = onBack,
             modifier = Modifier.align(Alignment.Start)
@@ -67,6 +102,10 @@ fun StatisticsScreen(onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(16.dp))
+
+        // =====================================
+        // STATISTIKIKON
+        // =====================================
         Box(
             modifier = Modifier
                 .size(80.dp)
@@ -83,6 +122,9 @@ fun StatisticsScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(16.dp))
 
+        // =====================================
+        // RUBRIK OCH BESKRIVNING
+        // =====================================
         Text(
             text = "Statistik",
             fontSize = 28.sp,
@@ -99,6 +141,9 @@ fun StatisticsScreen(onBack: () -> Unit) {
         )
         Spacer(Modifier.height(30.dp))
 
+        // =====================================
+        // KORT FÖR GENOMFÖRDA ARBETSPASS
+        // =====================================
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
@@ -110,6 +155,10 @@ fun StatisticsScreen(onBack: () -> Unit) {
             Column(
                 modifier = Modifier.padding(20.dp)
             ) {
+
+                // =====================================
+                // RUBRIK FÖR ARBETSPASS
+                // =====================================
                 Text(
                     text = "Genomförda arbetspass",
                     fontSize = 19.sp,
@@ -118,8 +167,12 @@ fun StatisticsScreen(onBack: () -> Unit) {
                 )
 
                 Spacer(Modifier.height(16.dp))
+                // =====================================
+                // VÄLJ ANVÄNDARE
+                // =====================================
 
-                // Val av volontär
+                // Dropdown för att välja vems arbetspass
+                // som ska visas i statistiken
                 Box {
                     OutlinedButton(
                         onClick = { volunteerMenuExpanded = true },
@@ -128,21 +181,72 @@ fun StatisticsScreen(onBack: () -> Unit) {
                         Text(selectedVolunteer)
                     }
 
+                    // =====================================
+                    // DROPDOWN-MENY
+                    // =====================================
                     DropdownMenu(
                         expanded = volunteerMenuExpanded,
-                        onDismissRequest = { volunteerMenuExpanded = false }
+                        onDismissRequest = {
+                            volunteerMenuExpanded = false
+                            volunteerSearchQuery = ""
+                        },
+                        modifier = Modifier.heightIn(max = 350.dp)
                     ) {
+
+                        // =====================================
+                        // SÖKFÄLT FÖR ANVÄNDARE
+                        // =====================================
+                        OutlinedTextField(
+                            value = volunteerSearchQuery,
+                            onValueChange = { volunteerSearchQuery = it },
+                            label = { Text("Sök användare") },
+                            placeholder = { Text("Namn eller e-post") },
+                            singleLine = true,
+                            modifier = Modifier
+                                .width(280.dp)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+
+                        HorizontalDivider()
+
+                        // =====================================
+                        // MINA ARBETSPASS
+                        // =====================================
+
+                        // Återgår till den inloggade
+                        // användarens egen statistik
                         DropdownMenuItem(
                             text = { Text("Mina arbetspass") },
                             onClick = {
                                 selectedVolunteer = "Mina arbetspass"
                                 selectedVolunteerId = currentUserId
                                 volunteerMenuExpanded = false
+                                volunteerSearchQuery = ""
                             }
                         )
 
+                        // =====================================
+                        // LISTA ÖVER ÖVRIGA ANVÄNDARE
+                        // =====================================
+
+                        // Filtrerar användare efter namn eller e-post
+                        // och sorterar dem i alfabetisk ordning
                         volunteers
-                            .filter { it.id != currentUserId }
+                            .filter { volunteer ->
+                                volunteer.id != currentUserId &&
+                                        (
+                                                volunteer.fullName.contains(
+                                                    volunteerSearchQuery,
+                                                    ignoreCase = true
+                                                ) ||
+                                                        volunteer.email.contains(
+                                                            volunteerSearchQuery,
+                                                            ignoreCase = true
+                                                        )
+                                                )
+                            }
+                            .sortedBy { it.fullName.lowercase() }
                             .forEach { volunteer ->
                                 DropdownMenuItem(
                                     text = { Text(volunteer.fullName) },
@@ -158,6 +262,15 @@ fun StatisticsScreen(onBack: () -> Unit) {
 
                 Spacer(Modifier.height(20.dp))
 
+                // =====================================
+                // STATISTIK FÖR OLIKA TIDSPERIODER
+                // =====================================
+
+                // Visar tre statistikrutor:
+                // senaste veckan, månaden och året.
+                //
+                // OBS: Rutorna visar just nu platshållaren "–".
+                // Riktiga arbetspass kopplas in senare.
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -167,6 +280,9 @@ fun StatisticsScreen(onBack: () -> Unit) {
                         "Senaste månaden",
                         "Senaste året"
                     ).forEach { label ->
+                        // =====================================
+                        // ENSKILD STATISTIKRUTA
+                        // =====================================
                         Column(
                             modifier = Modifier
                                 .weight(1f)
@@ -180,6 +296,9 @@ fun StatisticsScreen(onBack: () -> Unit) {
                                 ),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+
+                            // Antal arbetspass
+                            // Ersätts med riktig statistik senare
                             Text(
                                 text = "–",
                                 fontSize = 30.sp,
