@@ -1,5 +1,4 @@
-
-package com.example.hildastassebo
+package com.example.hildastassebo.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -13,12 +12,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -26,8 +22,17 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.StrokeCap
 import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.autofill.contentType
+import android.util.Patterns
+import com.google.firebase.FirebaseNetworkException
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 
 // Färgtema från designen
 private val Sage = Color(0xFF91B1A3)
@@ -48,8 +53,17 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
+    // Hanterar dialogrutan för återställning av lösenord
+    var showForgotPasswordDialog by remember { mutableStateOf(false) }
+    var resetEmail by remember { mutableStateOf("") }
+    var resetLoading by remember { mutableStateOf(false) }
+    var resetMessage by remember { mutableStateOf("") }
 
     val auth = remember { FirebaseAuth.getInstance() }
+
+    val passwordFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
 
     Box(
         modifier = Modifier
@@ -105,7 +119,7 @@ fun LoginScreen(
             Spacer(Modifier.height(58.dp))
 
             Text(
-                text = "Välkommen tillbaka!",
+                text = "Välkommen!",
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 color = Ink,
@@ -143,7 +157,13 @@ fun LoginScreen(
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = {
+                        passwordFocusRequester.requestFocus()
+                    }
                 ),
                 shape = RoundedCornerShape(18.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -156,6 +176,7 @@ fun LoginScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 68.dp)
+                    .contentType(ContentType.EmailAddress)
             )
 
             Spacer(Modifier.height(18.dp))
@@ -195,7 +216,13 @@ fun LoginScreen(
                     },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        keyboardController?.hide()
+                    }
                 ),
                 shape = RoundedCornerShape(18.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -208,6 +235,24 @@ fun LoginScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 68.dp)
+                    .contentType(ContentType.Password)
+                    .focusRequester(passwordFocusRequester)
+            )
+
+            // Öppnar dialogrutan för att återställa lösenordet
+            Text(
+                text = "Glömt lösenord?",
+                color = DarkSage,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .clickable {
+                        resetEmail = email.trim()
+                        resetMessage = ""
+                        showForgotPasswordDialog = true
+                    }
+                    .padding(top = 8.dp, bottom = 8.dp)
             )
 
             if (error.isNotEmpty()) {
@@ -252,15 +297,21 @@ fun LoginScreen(
                                 loading = false
                             }
                         } else {
-                            error = "Kunde inte logga in. " +
-                                    "Kontrollera e-post och lösenord."
+                            error = when (task.exception) {
+                                is FirebaseNetworkException ->
+                                    "Ingen internetanslutning. Kontrollera nätverket och försök igen."
+
+                                else ->
+                                    "Kunde inte logga in. Kontrollera e-post och lösenord."
+                            }
+
                             loading = false
                         }
                     }
                 },
                 enabled = !loading &&
-                    email.isNotBlank() &&
-                    password.isNotBlank(),
+                        Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() &&
+                        password.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(58.dp),
@@ -315,6 +366,104 @@ fun LoginScreen(
             Spacer(Modifier.height(115.dp))
         }
     }
+
+
+    // Dialogruta för användare som har glömt sitt lösenord
+    if (showForgotPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!resetLoading) {
+                    showForgotPasswordDialog = false
+                }
+            },
+            title = {
+                Text("Återställ lösenord")
+            },
+            text = {
+                Column {
+                    Text(
+                        "Ange din e-postadress så skickar vi " +
+                                "en länk för att återställa lösenordet."
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = resetEmail,
+                        onValueChange = {
+                            resetEmail = it
+                            resetMessage = ""
+                        },
+                        label = { Text("E-postadress") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .contentType(ContentType.EmailAddress)
+                    )
+
+                    if (resetMessage.isNotBlank()) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            text = resetMessage,
+                            color = DarkSage,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !resetLoading &&
+                            Patterns.EMAIL_ADDRESS.matcher(resetEmail.trim()).matches(),
+                    onClick = {
+                        resetLoading = true
+                        resetMessage = ""
+
+                        auth.sendPasswordResetEmail(resetEmail.trim())
+                            .addOnCompleteListener { task ->
+                                resetLoading = false
+
+                                resetMessage = when {
+                                    task.isSuccessful ->
+                                        "Om adressen är registrerad kommer " +
+                                                "du att få ett mejl med instruktioner."
+
+                                    task.exception is FirebaseNetworkException ->
+                                        "Ingen internetanslutning. Kontrollera nätverket och försök igen."
+
+                                    else ->
+                                        "Kunde inte behandla begäran just nu. " +
+                                                "Försök igen senare."
+                                }
+                            }
+                    }
+                ) {
+                    if (resetLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Skicka mejl", color = DarkSage)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !resetLoading,
+                    onClick = {
+                        showForgotPasswordDialog = false
+                    }
+                ) {
+                    Text("Stäng")
+                }
+            }
+        )
+    }
+
 }
 
 // Tassymbol ritad direkt i Compose
@@ -331,28 +480,28 @@ fun PawPrint(
         drawOval(
             color,
             topLeft = Offset(w * 0.12f, h * 0.28f),
-            size = androidx.compose.ui.geometry.Size(
+            size = Size(
                 w * 0.19f, h * 0.27f
             )
         )
         drawOval(
             color,
             topLeft = Offset(w * 0.31f, h * 0.05f),
-            size = androidx.compose.ui.geometry.Size(
+            size = Size(
                 w * 0.19f, h * 0.28f
             )
         )
         drawOval(
             color,
             topLeft = Offset(w * 0.55f, h * 0.05f),
-            size = androidx.compose.ui.geometry.Size(
+            size = Size(
                 w * 0.19f, h * 0.28f
             )
         )
         drawOval(
             color,
             topLeft = Offset(w * 0.76f, h * 0.28f),
-            size = androidx.compose.ui.geometry.Size(
+            size = Size(
                 w * 0.19f, h * 0.27f
             )
         )

@@ -2,22 +2,17 @@ package com.example.hildastassebo.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.EventAvailable
-import androidx.compose.material.icons.outlined.WbSunny
-import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,7 +23,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hildastassebo.PawPrint
 import com.example.hildastassebo.data.model.CalendarEvent
 import com.example.hildastassebo.data.model.CalendarNote
 import com.example.hildastassebo.data.model.ShiftBooking
@@ -48,14 +42,10 @@ import com.example.hildastassebo.ui.screens.calendar.CalendarEventDialogs
 import com.example.hildastassebo.ui.screens.calendar.CalendarNoteDialogs
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import java.time.LocalDateTime
-import java.util.UUID
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
 import java.util.Locale
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.ExperimentalFoundationApi
 
 // ============================================================
 // FÄRGER OCH GRUNDINSTÄLLNINGAR

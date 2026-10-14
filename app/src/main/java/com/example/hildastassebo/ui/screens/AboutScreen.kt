@@ -19,7 +19,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hildastassebo.PawPrint
 
 // Färger som matchar resten av appen
 private val Sage = Color(0xFF91B1A3)

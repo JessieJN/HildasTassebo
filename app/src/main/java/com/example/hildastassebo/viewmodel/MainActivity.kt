@@ -1,5 +1,4 @@
-
-package com.example.hildastassebo
+package com.example.hildastassebo.viewmodel
 
 import android.os.Bundle
 import android.util.Log
@@ -11,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 
@@ -19,6 +19,13 @@ import com.example.hildastassebo.ui.theme.HildasTasseboTheme
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.hildastassebo.RegisterScreen
+import com.example.hildastassebo.data.repository.syncUserEmail
+import com.example.hildastassebo.ui.screens.LoginScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -98,6 +105,27 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // Synkroniserar användarens e-postadress mellan Firebase Authentication och Firestore.
+                // Kontrollen körs när användaren öppnar eller återgår till appen.
+                // Detta behövs eftersom en ny e-postadress inte uppdateras förrän
+                // användaren har bekräftat den via verifieringsmejlet.
+                // Användaren förblir inloggad under processen.
+                val lifecycleOwner = LocalLifecycleOwner.current
+
+                DisposableEffect(lifecycleOwner, isLoggedIn) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME && isLoggedIn) {
+                            syncUserEmail()
+                        }
+                    }
+
+                    lifecycleOwner.lifecycle.addObserver(observer)
+
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
+                    }
+                }
+
                 // Bestämmer om registreringssidan visas
                 var showRegister by remember {
                     mutableStateOf(false)
@@ -111,7 +139,7 @@ class MainActivity : ComponentActivity() {
                         checkingAuth -> {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
-                                contentAlignment = androidx.compose.ui.Alignment.Center
+                                contentAlignment = Alignment.Center
                             ) {
                                 CircularProgressIndicator()
                             }

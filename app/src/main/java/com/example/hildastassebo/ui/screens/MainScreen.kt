@@ -17,6 +17,7 @@ import com.google.firebase.auth.FirebaseAuth
 import java.time.LocalDate
 import com.google.firebase.firestore.FirebaseFirestore
 import androidx.compose.runtime.DisposableEffect
+import com.example.hildastassebo.ui.navigation.SettingsScreen
 
 
 @Composable
