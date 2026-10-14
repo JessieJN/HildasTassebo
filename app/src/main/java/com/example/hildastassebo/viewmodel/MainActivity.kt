@@ -24,6 +24,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.hildastassebo.data.repository.syncUserEmail
+import com.example.hildastassebo.ui.screens.LoginScreen
 
 class MainActivity : ComponentActivity() {
 
