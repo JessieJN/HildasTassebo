@@ -1,19 +1,20 @@
 package com.example.hildastassebo.ui.screens.calendar
 
-import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.hildastassebo.data.model.*
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
 
 
 private val DarkSage = Color(0xFF47796C)
@@ -45,6 +46,9 @@ internal fun CalendarEventDialogs(
     // DIALOG: LÄGG TILL EVENEMANG
     // ------------------------------------------------------------
     if (showEventDialog) {
+        val timeFocusRequester = remember { FocusRequester() }
+        val descriptionFocusRequester = remember { FocusRequester() }
+
         AlertDialog(
             onDismissRequest = { onShowEventDialogChange(false) },
             title = {
@@ -65,22 +69,38 @@ internal fun CalendarEventDialogs(
                         onValueChange = { onEventTitleChange(it) },
                         label = { Text("Evenemangets namn") },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { timeFocusRequester.requestFocus() }
+                        )
                     )
 
                     OutlinedTextField(
                         value = eventTime,
                         onValueChange = { onEventTimeChange(it) },
                         label = { Text("Tid (t.ex. 13:00–16:00)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(timeFocusRequester),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { descriptionFocusRequester.requestFocus() }
+                        )
                     )
 
                     OutlinedTextField(
                         value = eventDescription,
                         onValueChange = { onEventDescriptionChange(it) },
                         label = { Text("Beskrivning") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(descriptionFocusRequester),
                         minLines = 2,
                         maxLines = 4
                     )
@@ -92,9 +112,9 @@ internal fun CalendarEventDialogs(
 
                     onClick = {
                         val existing = events[selectedDate].orEmpty()
-                        val edit = editingEvent
 
-                        if (edit == null) {
+
+                        if (editingEvent == null) {
                             // Skapa ett nytt evenemang
                             val newEvent = CalendarEvent(
                                 id = UUID.randomUUID().toString(),
@@ -108,7 +128,7 @@ internal fun CalendarEventDialogs(
                         } else {
                             // Uppdatera det befintliga evenemanget
                             events[selectedDate] = existing.map { event ->
-                                if (event.id == edit.id) {
+                                if (event.id == editingEvent.id) {
                                     event.copy(
                                         title = eventTitle.trim(),
                                         description = eventDescription.trim(),
