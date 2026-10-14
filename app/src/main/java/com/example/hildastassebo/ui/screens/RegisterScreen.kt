@@ -35,7 +35,8 @@ private val FieldBorder = Color(0xFFD7E2DC)
 @Composable
 fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
-    onLoginClick: () -> Unit
+    onLoginClick: () -> Unit,
+    onAboutClick: () -> Unit
 ) {
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
@@ -515,8 +516,18 @@ fun RegisterScreen(
                 }
             )
         }
-
+        TextButton(
+            onClick = onAboutClick
+        ) {
+            Text(
+                text = "Om oss",
+                color = DarkSage,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
         Spacer(Modifier.height(30.dp))
+
     }
 }
 

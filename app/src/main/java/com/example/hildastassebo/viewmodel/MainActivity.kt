@@ -27,6 +27,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.hildastassebo.RegisterScreen
 import com.example.hildastassebo.data.repository.syncUserEmail
 import com.example.hildastassebo.ui.screens.LoginScreen
+import com.example.hildastassebo.ui.screens.AboutScreen
+import androidx.compose.foundation.layout.statusBarsPadding
 
 class MainActivity : ComponentActivity() {
 
@@ -160,6 +162,10 @@ class MainActivity : ComponentActivity() {
                 var showRegister by rememberSaveable {
                     mutableStateOf(false)
                 }
+                // Visar Om oss utan att användaren behöver logga in
+                var showAbout by rememberSaveable {
+                    mutableStateOf(false)
+                }
 
                 // ==================================
                 // NAVIGERING MELLAN SIDOR
@@ -174,6 +180,22 @@ class MainActivity : ComponentActivity() {
                                 CircularProgressIndicator()
                             }
                         }
+                    // Om oss för användare som inte är inloggade
+                    !isLoggedIn && showAbout -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize()
+                                .fillMaxSize()
+                                .statusBarsPadding()
+                        ) {
+                            TextButton(
+                                onClick = { showAbout = false }
+                            ) {
+                                Text("← Tillbaka")
+                            }
+
+                            AboutScreen()
+                        }
+                    }
                     // 1. ANVÄNDAREN ÄR INLOGGAD
                     isLoggedIn -> {
 
@@ -201,6 +223,9 @@ class MainActivity : ComponentActivity() {
                             },
                             onLoginClick = {
                                 showRegister = false
+                            },
+                            onAboutClick = {
+                                showAbout = true
                             }
                         )
                     }
@@ -215,6 +240,9 @@ class MainActivity : ComponentActivity() {
                             },
                             onRegisterClick = {
                                 showRegister = true
+                            },
+                            onAboutClick = {
+                                showAbout = true
                             }
                         )
                     }

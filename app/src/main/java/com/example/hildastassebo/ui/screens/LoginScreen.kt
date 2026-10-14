@@ -47,7 +47,8 @@ private val FieldBorder = Color(0xFFD7E2DC)
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
-    onRegisterClick: () -> Unit = {}
+    onRegisterClick: () -> Unit = {},
+    onAboutClick: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -385,6 +386,17 @@ fun LoginScreen(
                     modifier = Modifier.clickable {
                         onRegisterClick()
                     }
+                )
+            }
+
+            TextButton(
+                onClick = onAboutClick
+            ) {
+                Text(
+                    text = "Om oss",
+                    color = DarkSage,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
