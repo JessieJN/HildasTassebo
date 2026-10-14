@@ -17,6 +17,7 @@ import com.google.firebase.auth.FirebaseAuth
 import java.time.LocalDate
 import com.google.firebase.firestore.FirebaseFirestore
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.hildastassebo.ui.navigation.SettingsScreen
 
 
@@ -26,7 +27,7 @@ fun MainScreen(
 ) {
 
     // Håller reda på vilken flik som är vald
-    var selectedTab by remember {
+    var selectedTab by rememberSaveable  {
         mutableStateOf("home")
     }
 
@@ -36,7 +37,7 @@ fun MainScreen(
     }
 
     // Håller reda på om inställningssidan ska visas
-    var showSettings by remember {
+    var showSettings by rememberSaveable  {
         mutableStateOf(false)
     }
     var showStatistics by remember {

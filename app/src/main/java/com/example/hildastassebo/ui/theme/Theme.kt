@@ -1,57 +1,36 @@
 package com.example.hildastassebo.ui.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+private val HildasColorScheme = lightColorScheme(
+    primary = Color(0xFF47796C),
     onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+
+    primaryContainer = Color(0xFFE7F0EB),
+    onPrimaryContainer = Color(0xFF244E42),
+
+    secondary = Color(0xFF91B1A3),
+    onSecondary = Color(0xFF172E27),
+
+    background = Color(0xFFFAFAF7),
+    onBackground = Color(0xFF24342E),
+
+    surface = Color(0xFFFAFAF7),
+    onSurface = Color(0xFF24342E),
+
+    surfaceVariant = Color(0xFFE7F0EB),
+    onSurfaceVariant = Color(0xFF47796C)
 )
 
 @Composable
 fun HildasTasseboTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = HildasColorScheme,
         typography = Typography,
         content = content
     )
