@@ -601,7 +601,12 @@ fun CalendarScreen(
                             color = Ink
                         )
 
-                        val dateNotes = notes[selectedDate].orEmpty()
+                        val dateNotes = notes[selectedDate]
+                            .orEmpty()
+                            .sortedWith(
+                                compareByDescending<CalendarNote> { it.isAdminNote }
+                                    .thenByDescending { it.createdAt }
+                            )
 
                         if (dateNotes.isEmpty()) {
                             Text(

@@ -31,20 +31,32 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 
-
+// =====================================
+// FÄRGER OCH DESIGN
+// =====================================
 private val DarkSage = Color(0xFF47796C)
 private val PaleSage = Color(0xFFE7F0EB)
 private val Background = Color(0xFFFAFAF7)
 private val Ink = Color(0xFF20242C)
 private val Muted = Color(0xFF7D8793)
 private val FieldBorder = Color(0xFFD7E2DC)
+
+// =====================================
+// ADMINISTRATÖRSSKÄRM
+// =====================================
 @Composable
     fun AdminScreen(
         onLogout: () -> Unit,
         onSettingsClick: () -> Unit,
+        onStatisticsClick: () -> Unit,
         adminViewModel: AdminViewModel = viewModel()
-    ) {
+    ){
+    // =====================================
+    // BEHÖRIGHET OCH INLÄSNING
+    // =====================================
         var showLogoutDialog by remember {
             mutableStateOf(false)
         }
@@ -60,21 +72,34 @@ private val FieldBorder = Color(0xFFD7E2DC)
             Text("Du har inte behörighet att visa denna sida.")
             return
         }
+    // =====================================
+    // ANVÄNDARDATA OCH TILLSTÅND
+    // =====================================
     val volunteers by adminViewModel.volunteers.collectAsState()
     val volunteersError by adminViewModel.volunteersError.collectAsState()
-    var searchQuery by remember { mutableStateOf("") }
     var showAddVolunteerDialog by remember { mutableStateOf(false) }
     var newVolunteerFirstName by remember { mutableStateOf("") }
     var newVolunteerLastName by remember { mutableStateOf("") }
     var newVolunteerEmail by remember { mutableStateOf("") }
     var selectedUserId by remember { mutableStateOf<String?>(null) }
 
+    // =====================================
+    // REDIGERING OCH VAL AV ANVÄNDARE
+    // =====================================
     var editingUserId by remember { mutableStateOf<String?>(null) }
+    var selectedVolunteerId by remember { mutableStateOf<String?>(null) }
+    var volunteerDropdownExpanded by remember { mutableStateOf(false) }
+    var volunteerSearchQuery by remember {
+        mutableStateOf("")
+    }
     var editedFirstName by remember { mutableStateOf("") }
     var editedLastName by remember { mutableStateOf("") }
     var editedRole by remember { mutableStateOf(0L) }
-
     var editError by remember { mutableStateOf<String?>(null) }
+
+    // =====================================
+    // INLOGGAD ADMINISTRATÖR
+    // =====================================
     val currentUser = FirebaseAuth.getInstance().currentUser
 
     val adminName = currentUser?.displayName
@@ -82,17 +107,19 @@ private val FieldBorder = Color(0xFFD7E2DC)
         ?: "Administratör"
 
     val adminEmail = currentUser?.email ?: ""
-    val filteredVolunteers = volunteers.filter { volunteer ->
-        volunteer.fullName.contains(searchQuery, ignoreCase = true) ||
-                volunteer.email.contains(searchQuery, ignoreCase = true)
-    }
+
+    // =====================================
+    // SIDANS LAYOUT OCH PROFILHUVUD
+    // =====================================
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Background)
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
-    )  {
+    ) {
         Box(
             modifier = Modifier
                 .size(80.dp)
@@ -126,38 +153,163 @@ private val FieldBorder = Color(0xFFD7E2DC)
             fontSize = 14.sp,
             color = Muted
         )
+
+
 // INSTÄLLNINGAR OCH LOGGA UT
-
-
-
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            label = { Text("Sök användare") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = RoundedCornerShape(14.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = DarkSage,
-                unfocusedBorderColor = FieldBorder,
-                focusedLabelColor = DarkSage
-            ),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text
-            )
-        )
+        // =====================================
+        // FELMEDDELANDEN VID HÄMTNING
+        // =====================================
         if (volunteersError != null) {
             Text(
                 text = volunteersError ?: "",
                 color = MaterialTheme.colorScheme.error
             )
         }
+        // =====================================
+        // VÄLJ ANVÄNDARE – DROPDOWN OCH SÖKNING
+        // =====================================
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = PaleSage
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Välj användare",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Ink
+                )
 
+                Text(
+                    text = "Sök efter namn eller e-post för att visa och redigera en användare.",
+                    fontSize = 14.sp,
+                    color = Muted
+                )
+
+                Box {
+                    OutlinedButton(
+                        onClick = { volunteerDropdownExpanded = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = volunteers
+                                .find { it.id == selectedVolunteerId }
+                                ?.fullName ?: "Välj användare"
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = volunteerDropdownExpanded,
+                        onDismissRequest = {
+                            volunteerDropdownExpanded = false
+                        },
+                        modifier = Modifier.heightIn(max = 350.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = volunteerSearchQuery,
+                            onValueChange = { volunteerSearchQuery = it },
+                            label = { Text("Sök användare") },
+                            placeholder = { Text("Namn eller e-post") },
+                            singleLine = true,
+                            modifier = Modifier
+                                .width(280.dp)
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+
+                        HorizontalDivider()
+
+                        volunteers
+                            .filter { volunteer ->
+                                volunteer.fullName.contains(
+                                    volunteerSearchQuery,
+                                    ignoreCase = true
+                                ) ||
+                                        volunteer.email.contains(
+                                            volunteerSearchQuery,
+                                            ignoreCase = true
+                                        )
+                            }
+                            .sortedBy { it.fullName.lowercase() }
+                            .forEach { volunteer ->
+                                DropdownMenuItem(
+                                    text = { Text(volunteer.fullName) },
+                                    onClick = {
+                                        selectedVolunteerId = volunteer.id
+                                        volunteerDropdownExpanded = false
+                                        volunteerSearchQuery = ""
+                                    }
+                                )
+                            }
+                    }
+                }
+            }
+        }
+        // =====================================
+        // TOMT LÄGE – INGEN ANVÄNDARE VALD
+        // =====================================
+        if (selectedVolunteerId == null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                border = BorderStroke(1.dp, FieldBorder)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .background(PaleSage, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.PersonOutline,
+                            contentDescription = null,
+                            tint = DarkSage,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+
+                    Text(
+                        text = "Välj en användare",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Ink
+                    )
+
+                    Text(
+                        text = "Välj en volontär eller administratör i listan ovan för att se och redigera deras uppgifter.",
+                        fontSize = 14.sp,
+                        color = Muted,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+        // =====================================
+        // VALD ANVÄNDARE – UPPGIFTER OCH REDIGERINGSKNAPP
+        // =====================================
         LazyColumn(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.heightIn(max = 350.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(filteredVolunteers, key = { it.id }) { volunteer ->
+            items(
+                volunteers.filter { it.id == selectedVolunteerId },
+                key = { it.id }
+            ) { volunteer ->
 
                 Card(
                     modifier = Modifier
@@ -207,121 +359,43 @@ private val FieldBorder = Color(0xFFD7E2DC)
                             Text("Efternamn: ${volunteer.lastName}")
                             Text("E-post: ${volunteer.email}")
 
-                            if (editingUserId == volunteer.id) {
-                                OutlinedTextField(
-                                    value = editedFirstName,
-                                    onValueChange = { editedFirstName = it },
-                                    label = { Text("Förnamn") },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-
-                                OutlinedTextField(
-                                    value = editedLastName,
-                                    onValueChange = { editedLastName = it },
-                                    label = { Text("Efternamn") },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Text(
-                                    text = "Användarroll",
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Ink
-                                )
-
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(
-                                        selected = editedRole == 0L,
-                                        onClick = { editedRole = 0L }
-                                    )
-
-                                    Text(
-                                        text = "Volontär",
-                                        modifier = Modifier.clickable {
-                                            editedRole = 0L
-                                        }
-                                    )
-                                }
-
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(
-                                        selected = editedRole == 1L,
-                                        onClick = { editedRole = 1L }
-                                    )
-
-                                    Text(
-                                        text = "Administratör",
-                                        modifier = Modifier.clickable {
-                                            editedRole = 1L
-                                        }
-                                    )
-                                }
-
-                                if (editError != null) {
-                                    Text(
-                                        text = editError ?: "",
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
-
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Button(
-                                        onClick = {
-                                            if (editedFirstName.isBlank() || editedLastName.isBlank()) {
-                                                editError = "Fyll i både förnamn och efternamn."
-                                            } else {
-                                                adminViewModel.updateUser(
-                                                    userId = volunteer.id,
-                                                    firstName = editedFirstName.trim(),
-                                                    lastName = editedLastName.trim(),
-                                                    role = editedRole,
-                                                    onSuccess = {
-                                                        editingUserId = null
-                                                        editError = null
-                                                    },
-                                                    onError = {
-                                                        editError = it.message ?: "Kunde inte spara."
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    ) {
-                                        Text("Spara")
-                                    }
-
-                                    OutlinedButton(
-                                        onClick = {
-                                            editingUserId = null
-                                            editError = null
-                                        }
-                                    ) {
-                                        Text("Avbryt")
-                                    }
-                                }
-                            } else {
-                                Button(
-                                    onClick = {
-                                        editingUserId = volunteer.id
-                                        editedFirstName = volunteer.firstName
-                                        editedLastName = volunteer.lastName
-                                        editedRole = volunteer.role
-                                        editError = null
-                                    }
-                                ) {
-                                    Text("Redigera användare")
-                                }
+                            Button(
+                                onClick = {
+                                    editingUserId = volunteer.id
+                                    editedFirstName = volunteer.firstName
+                                    editedLastName = volunteer.lastName
+                                    editedRole = volunteer.role
+                                    editError = null
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = DarkSage,
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text("Redigera användare")
                             }
                         }
                     }
                 }
             }
         }
-        Text(
-            text = "Statistik över arbetade pass",
-            style = MaterialTheme.typography.titleLarge
-        )
+        // =====================================
+        // NAVIGERING TILL STATISTIK
+        // =====================================
+        OutlinedButton(
+            onClick = onStatisticsClick,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text(
+                text = "Visa statistik över arbetspass",
+                color = DarkSage
+            )
+        }
+        // =====================================
+        // INSTÄLLNINGAR OCH LOGGA UT
+        // =====================================
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
@@ -379,7 +453,10 @@ private val FieldBorder = Color(0xFFD7E2DC)
                     )
                 }
             }
-        }    // BEKRÄFTA UTLOGGNING
+        }
+        // =====================================
+        // BEKRÄFTA UTLOGGNING
+        // =====================================
         if (showLogoutDialog) {
             AlertDialog(
                 onDismissRequest = {
@@ -417,6 +494,133 @@ private val FieldBorder = Color(0xFFD7E2DC)
         }
 
     }
+
+    // =====================================
+    // POPUP – REDIGERA ANVÄNDARE
+    // =====================================
+    if (editingUserId != null) {
+        AlertDialog(
+            onDismissRequest = {
+                editingUserId = null
+                editError = null
+            },
+            title = {
+                Text("Redigera användare")
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = editedFirstName,
+                        onValueChange = { editedFirstName = it },
+                        label = { Text("Förnamn") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = DarkSage,
+                            focusedLabelColor = DarkSage,
+                            cursorColor = DarkSage,
+                            unfocusedBorderColor = FieldBorder
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = editedLastName,
+                        onValueChange = { editedLastName = it },
+                        label = { Text("Efternamn") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = DarkSage,
+                            focusedLabelColor = DarkSage,
+                            cursorColor = DarkSage,
+                            unfocusedBorderColor = FieldBorder
+                        )
+                    )
+
+                    Text(
+                        text = "Användarroll",
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = editedRole == 0L,
+                            onClick = { editedRole = 0L },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = DarkSage,
+                                unselectedColor = Muted
+                            )
+                        )
+                        Text("Volontär")
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = editedRole == 1L,
+                            onClick = { editedRole = 1L },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = DarkSage,
+                                unselectedColor = Muted
+                            )
+                        )
+                        Text("Administratör")
+                    }
+
+                    if (editError != null) {
+                        Text(
+                            text = editError ?: "",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val userId = editingUserId ?: return@TextButton
+
+                        if (editedFirstName.isBlank() || editedLastName.isBlank()) {
+                            editError = "Fyll i både förnamn och efternamn."
+                        } else {
+                            adminViewModel.updateUser(
+                                userId = userId,
+                                firstName = editedFirstName.trim(),
+                                lastName = editedLastName.trim(),
+                                role = editedRole,
+                                onSuccess = {
+                                    editingUserId = null
+                                    editError = null
+                                },
+                                onError = {
+                                    editError = it.message ?: "Kunde inte spara."
+                                }
+                            )
+                        }
+                    }
+                ) {
+                    Text("Spara", color = DarkSage)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        editingUserId = null
+                        editError = null
+                    }
+                ) {
+                    Text("Avbryt")
+                }
+            }
+        )
+    }
+
+    // =====================================
+    // POPUP – BJUD IN VOLONTÄR (ÄNNU EJ KOPPLAD)- Behåll eller inte???
+    // =====================================
     if (showAddVolunteerDialog) {
         AlertDialog(
             onDismissRequest = {
