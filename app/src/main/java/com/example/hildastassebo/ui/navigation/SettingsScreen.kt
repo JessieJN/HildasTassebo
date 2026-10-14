@@ -22,7 +22,8 @@ private val BackgroundColor = Color(0xFFFAFAF7)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onAccountDeleted: () -> Unit
 ) {
     val auth = remember { FirebaseAuth.getInstance() }
     val db = remember { FirebaseFirestore.getInstance() }
@@ -35,7 +36,8 @@ fun SettingsScreen(
 
     var message by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
-
+// Visar bekräftelsedialogen för kontoradering
+    var showDeleteDialog by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         val activeUser = auth.currentUser ?: return@LaunchedEffect
 
@@ -307,6 +309,37 @@ fun SettingsScreen(
                     Text("Ändra lösenord")
                 }
             }
+            // =====================================
+            // RADERA KONTO
+            // =====================================
+
+                        HorizontalDivider()
+
+                        Text(
+                            text = "Radera konto",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFB45353)
+                        )
+
+                        Text(
+                            text = "Om du raderar ditt konto förlorar du åtkomsten till Hildas Tassebo. Åtgärden kan inte ångras.",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+
+                        OutlinedButton(
+                            onClick = {
+                                showDeleteDialog = true
+                            },
+                            enabled = !isLoading && user != null,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFFB45353)
+                            )
+                        ) {
+                            Text("Radera mitt konto")
+                        }
 
             if (isLoading) {
                 CircularProgressIndicator(color = SageGreen)
@@ -320,5 +353,152 @@ fun SettingsScreen(
                 )
             }
         }
+
     }
+
+            // =====================================
+            // BEKRÄFTA RADERING AV KONTO
+            // =====================================
+
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = {
+                        showDeleteDialog = false
+                    },
+                    title = {
+                        Text("Radera konto?")
+                    },
+                    text = {
+                        Text(
+                            "Är du säker på att du vill radera ditt konto? " +
+                                    "Detta går inte att ångra. " +
+                                    "Du behöver ange ditt nuvarande lösenord " +
+                                    "i inställningarna innan kontot kan raderas."
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showDeleteDialog = false
+
+                                val activeUser = auth.currentUser
+                                val email = activeUser?.email
+
+                                when {
+                                    activeUser == null || email.isNullOrBlank() -> {
+                                        message = "Du måste vara inloggad."
+                                    }
+
+                                    currentPassword.isBlank() -> {
+                                        message = "Ange ditt nuvarande lösenord."
+                                    }
+
+                                    !isEmailAccount -> {
+                                        message = "Kontot använder en annan inloggningsmetod."
+                                    }
+
+                                    else -> {
+                                        isLoading = true
+                                        message = ""
+
+                                        // Verifiera användarens nuvarande lösenord
+                                        val credential = EmailAuthProvider.getCredential(
+                                            email,
+                                            currentPassword
+                                        )
+
+                                        activeUser.reauthenticate(credential)
+                                            .addOnSuccessListener {
+
+                                                // Kontrollera att Firestore-profilen finns
+                                                val userDocument = db.collection("användare")
+                                                    .document(activeUser.uid)
+
+                                                userDocument.get()
+                                                    .addOnSuccessListener { document ->
+
+                                                        if (!document.exists()) {
+                                                            isLoading = false
+                                                            message = "Användarprofilen saknas i Firestore."
+                                                        } else {
+
+                                                            // Radera Firestore-profilen
+                                                            userDocument.delete()
+                                                                .addOnSuccessListener {
+
+                                                                    // Radera Authentication-kontot
+                                                                    activeUser.delete()
+                                                                        .addOnSuccessListener {
+                                                                            isLoading = false
+                                                                            auth.signOut()
+                                                                            onAccountDeleted()
+                                                                        }
+                                                                        .addOnFailureListener { exception ->
+
+                                                                            // Försök återställa profilen om Authentication-raderingen misslyckas
+                                                                            val previousData = document.data
+
+                                                                            if (previousData != null) {
+                                                                                userDocument.set(previousData)
+                                                                                    .addOnSuccessListener {
+                                                                                        isLoading = false
+                                                                                        message =
+                                                                                            "Kontot kunde inte raderas. " +
+                                                                                                    "Din profil har återställts. Försök igen."
+                                                                                    }
+                                                                                    .addOnFailureListener {
+                                                                                        isLoading = false
+                                                                                        message =
+                                                                                            "Kontot kunde inte raderas och profilen kunde inte " +
+                                                                                                    "återställas. Kontakta administratören."
+                                                                                    }
+                                                                            } else {
+                                                                                isLoading = false
+                                                                                message =
+                                                                                    "Kontot kunde inte raderas: " +
+                                                                                            "${exception.localizedMessage}"
+                                                                            }
+                                                                        }
+                                                                }
+                                                                .addOnFailureListener { exception ->
+                                                                    isLoading = false
+                                                                    message =
+                                                                        "Kunde inte radera profilen: " +
+                                                                                "${exception.localizedMessage}"
+                                                                }
+                                                        }
+                                                    }
+                                                    .addOnFailureListener { exception ->
+                                                        isLoading = false
+                                                        message =
+                                                            "Kunde inte kontrollera profilen: " +
+                                                                    "${exception.localizedMessage}"
+                                                    }
+                                            }
+                                            .addOnFailureListener {
+                                                isLoading = false
+                                                message = "Kunde inte verifiera lösenordet."
+                                            }
+                                    }
+                                }
+                            }
+                        ) {
+                            Text(
+                                "Radera konto",
+                                color = Color(0xFFB45353)
+                            )
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                showDeleteDialog = false
+                            }
+                        ) {
+                            Text("Avbryt")
+                        }
+                    }
+                )
+            }
+
 }

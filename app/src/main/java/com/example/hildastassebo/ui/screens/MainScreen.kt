@@ -128,6 +128,10 @@ fun MainScreen(
                 SettingsScreen(
                     onBack = {
                         showSettings = false
+                    },
+                    onAccountDeleted = {
+                        showSettings = false
+                        onLogout()
                     }
                 )
 

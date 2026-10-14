@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Android Studio inspection profiles
+.idea/inspectionProfiles/

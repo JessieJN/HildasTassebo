@@ -91,17 +91,46 @@ class MainActivity : ComponentActivity() {
                     val user = auth.currentUser
 
                     if (user == null) {
+                        isLoggedIn = false
                         checkingAuth = false
                     } else {
                         user.reload().addOnCompleteListener { task ->
+
                             if (task.isSuccessful && user.isEmailVerified) {
-                                isLoggedIn = true
+
+                                FirebaseFirestore.getInstance()
+                                    .collection("användare")
+                                    .document(user.uid)
+                                    .get()
+                                    .addOnSuccessListener { document ->
+
+                                        if (document.exists()) {
+                                            isLoggedIn = true
+                                        } else {
+                                            auth.signOut()
+                                            isLoggedIn = false
+                                        }
+
+                                        checkingAuth = false
+                                    }
+                                    .addOnFailureListener { exception ->
+
+                                        Log.e(
+                                            "AUTH_CHECK",
+                                            "Kunde inte kontrollera användarprofilen",
+                                            exception
+                                        )
+
+                                        auth.signOut()
+                                        isLoggedIn = false
+                                        checkingAuth = false
+                                    }
+
                             } else {
                                 auth.signOut()
                                 isLoggedIn = false
+                                checkingAuth = false
                             }
-
-                            checkingAuth = false
                         }
                     }
                 }
