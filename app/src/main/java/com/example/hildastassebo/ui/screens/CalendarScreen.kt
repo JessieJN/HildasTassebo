@@ -46,6 +46,10 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
 import java.util.Locale
+import com.example.hildastassebo.data.model.Volunteer
+import com.example.hildastassebo.data.repository.VolunteerRepository
+import com.example.hildastassebo.ui.screens.calendar.AdminVolunteerPickerDialog
+import com.example.hildastassebo.data.repository.ShiftRepository
 
 // ============================================================
 // FÄRGER OCH GRUNDINSTÄLLNINGAR
@@ -69,6 +73,18 @@ private val Swedish = Locale.forLanguageTag("sv-SE")
 fun CalendarScreen(
     events: MutableMap<LocalDate, List<CalendarEvent>>
 ) {
+    // ADMIN TILLÄGG AV PASS PÅ VOLONTÄR
+    var showAdminVolunteerPicker by remember { mutableStateOf(false) }
+    var adminSelectedShiftType by remember { mutableStateOf(ShiftType.MORNING) }
+    var adminVolunteers by remember {
+        mutableStateOf<List<Volunteer>>(emptyList())
+    }
+    var adminVolunteerError by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    val volunteerRepository = remember { VolunteerRepository() }
+    val shiftRepository = remember { ShiftRepository() }
     val today = remember { LocalDate.now() }
 
     var selectedDate by remember { mutableStateOf(today) }
@@ -76,6 +92,9 @@ fun CalendarScreen(
     var listFilter by remember { mutableStateOf(ShiftListFilter.ALL) }
     var bookingDialog by remember { mutableStateOf<ShiftType?>(null) }
     var shiftToCancel by remember { mutableStateOf<ShiftKey?>(null) }
+    var bookingToCancel by remember {
+        mutableStateOf<ShiftBooking?>(null)
+    }
     var wantsToWorkAlone by remember { mutableStateOf(false) }
 
     // ANTECKNINGAR: tillfälligt i minnet, ännu inte sparade i Firestore.
@@ -415,14 +434,45 @@ fun CalendarScreen(
                         date = selectedDate,
                         isAdmin = isAdmin,
                         onCancelClick = { booking ->
-                            if (booking.isMe) {
+                            if (booking.isMe || isAdmin) {
+                                bookingToCancel = booking
                                 shiftToCancel = ShiftKey(selectedDate, type)
                             }
                         }
                     )
                 }
 
+                // ADMIN: LÄGG TILL VOLONTÄR PÅ PASS
+                if (isAdmin) {
+                    item {
+                        OutlinedButton(
+                            onClick = {
+                                adminVolunteerError = null
 
+                                volunteerRepository.getOnlyVolunteers(
+                                    onSuccess = { volunteers ->
+                                        adminVolunteers = volunteers
+                                        showAdminVolunteerPicker = true
+                                    },
+                                    onError = { exception ->
+                                        adminVolunteerError =
+                                            exception.localizedMessage
+                                                ?: "Kunde inte hämta volontärer."
+                                    }
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(
+                                Icons.Outlined.Add,
+                                contentDescription = null
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Lägg till volontär")
+                        }
+                    }
+                }
                 // ----------------------------------------------------
                 //  BEFINTLIG BOKNINGSKNAPP
                 // ----------------------------------------------------
@@ -699,6 +749,46 @@ fun CalendarScreen(
             }
         }
     }
+    if (showAdminVolunteerPicker && isAdmin) {
+        AdminVolunteerPickerDialog(
+            volunteers = adminVolunteers,
+            onDismiss = {
+                showAdminVolunteerPicker = false
+            },
+            onVolunteerSelected = { volunteer, shiftType, wantsToWorkAlone ->
+
+                if (isAdmin) {
+                    shiftRepository.addVolunteerToShift(
+                        volunteer = volunteer,
+                        date = selectedDate,
+                        shiftType = shiftType,
+                        onSuccess = {
+                            showAdminVolunteerPicker = false
+                        },
+                        onError = { exception ->
+                            showAdminVolunteerPicker = false
+                            adminVolunteerError =
+                                exception.localizedMessage
+                                    ?: "Kunde inte spara bokningen."
+                        }
+                    )
+                }
+            }
+        )
+    }
+
+    if (adminVolunteerError != null) {
+        AlertDialog(
+            onDismissRequest = { adminVolunteerError = null },
+            title = { Text("Något gick fel") },
+            text = { Text(adminVolunteerError.orEmpty()) },
+            confirmButton = {
+                TextButton(onClick = { adminVolunteerError = null }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
 
     // Dialogernas originalkod ligger nu i respektive kalenderfil.
     // Tillståndet ägs fortfarande av CalendarScreen, så beteendet är oförändrat.
@@ -710,6 +800,7 @@ fun CalendarScreen(
         onBookingDialogChange = { bookingDialog = it },
         shiftToCancel = shiftToCancel,
         onShiftToCancelChange = { shiftToCancel = it },
+        bookingToCancel = bookingToCancel,
         wantsToWorkAlone = wantsToWorkAlone,
         onWantsToWorkAloneChange = { wantsToWorkAlone = it }
     )

@@ -134,7 +134,7 @@ internal fun ShiftCard(
                                 fontSize = 11.sp
                             )
                         }
-                        if (booking.isMe) {
+                        if (booking.isMe || isAdmin) {
                             Spacer(Modifier.weight(1f))
 
                             val canCancel = isAdmin ||
@@ -275,6 +275,7 @@ internal fun CalendarShiftDialogs(
     onBookingDialogChange: (ShiftType?) -> Unit,
     shiftToCancel: ShiftKey?,
     onShiftToCancelChange: (ShiftKey?) -> Unit,
+    bookingToCancel: ShiftBooking?,
     wantsToWorkAlone: Boolean,
     onWantsToWorkAloneChange: (Boolean) -> Unit
 ) {
@@ -405,12 +406,23 @@ internal fun CalendarShiftDialogs(
         AlertDialog(
             onDismissRequest = { onShiftToCancelChange(null) },
             title = { Text("Avboka arbetspass?") },
-            text = { Text("Är du säker på att du vill avboka ditt arbetspass?") },
+            text = {
+                Text(
+                    if (bookingToCancel?.isMe == true) {
+                        "Är du säker på att du vill avboka ditt arbetspass?"
+                    } else {
+                        "Är du säker på att du vill avboka " +
+                                "${bookingToCancel?.name ?: "volontären"} från detta pass?"
+                    }
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        bookings[key] = bookings[key].orEmpty()
-                            .filterNot { it.isMe }
+                        bookingToCancel?.let { selectedBooking ->
+                            bookings[key] = bookings[key].orEmpty()
+                                .filterNot { it === selectedBooking }
+                        }
 
                         onShiftToCancelChange(null)
                     }

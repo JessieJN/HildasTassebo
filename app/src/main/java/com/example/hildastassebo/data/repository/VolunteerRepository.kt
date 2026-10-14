@@ -53,4 +53,29 @@ class VolunteerRepository {
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener { onError(it) }
     }
+    fun getOnlyVolunteers(
+        onSuccess: (List<Volunteer>) -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        db.collection("användare")
+            .whereEqualTo("roll", 0L)
+            .get()
+            .addOnSuccessListener { result ->
+
+                val volunteers = result.documents.map { document ->
+                    Volunteer(
+                        id = document.id,
+                        firstName = document.getString("förnamn") ?: "",
+                        lastName = document.getString("efternamn") ?: "",
+                        email = document.getString("epost") ?: "",
+                        role = document.getLong("roll") ?: 0L
+                    )
+                }.sortedBy { it.fullName.lowercase() }
+
+                onSuccess(volunteers)
+            }
+            .addOnFailureListener { exception ->
+                onError(exception)
+            }
+    }
 }

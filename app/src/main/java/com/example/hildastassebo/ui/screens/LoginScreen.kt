@@ -33,6 +33,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import com.google.firebase.firestore.FirebaseFirestore
 
 // Färgtema från designen
 private val Sage = Color(0xFF91B1A3)
@@ -282,7 +283,31 @@ fun LoginScreen(
 
                             user?.reload()?.addOnCompleteListener { reloadTask ->
                                 if (reloadTask.isSuccessful && user.isEmailVerified) {
-                                    onLoginSuccess()
+
+                                    // Kontrollera att användaren fortfarande har en profil i Firestore
+                                    FirebaseFirestore.getInstance()
+                                        .collection("användare")
+                                        .document(user.uid)
+                                        .get()
+                                        .addOnSuccessListener { document ->
+
+                                            if (document.exists()) {
+                                                // Kontot finns i både Authentication och Firestore
+                                                onLoginSuccess()
+                                            } else {
+                                                // Authentication-kontot finns kvar, men profilen är borttagen
+                                                error = "Ditt användarkonto finns inte längre."
+                                                auth.signOut()
+                                            }
+
+                                            loading = false
+                                        }
+                                        .addOnFailureListener {
+                                            error = "Kunde inte kontrollera ditt konto. Försök igen."
+                                            auth.signOut()
+                                            loading = false
+                                        }
+
                                 } else if (reloadTask.isSuccessful) {
                                     error = "Du måste verifiera din e-postadress innan du kan logga in."
                                     auth.signOut()
