@@ -1,3 +1,4 @@
+
 package com.example.hildastassebo.ui.navigation
 
 import androidx.compose.foundation.layout.*
@@ -15,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.example.hildastassebo.data.repository.AccountDeletionRepository
 
 private val SageGreen = Color(0xFF47796C)
 private val BackgroundColor = Color(0xFFFAFAF7)
@@ -27,6 +29,7 @@ fun SettingsScreen(
 ) {
     val auth = remember { FirebaseAuth.getInstance() }
     val db = remember { FirebaseFirestore.getInstance() }
+    val deletionRepository = remember { AccountDeletionRepository() }
     val user = auth.currentUser
 
     var newEmail by remember { mutableStateOf("") }
@@ -36,8 +39,127 @@ fun SettingsScreen(
 
     var message by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
-// Visar bekräftelsedialogen för kontoradering
+
+    // Visar bekräftelsedialogen för kontoradering.
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Hanterar laddningsrutan och status under kontoraderingen.
+    var showDeletionProgress by remember { mutableStateOf(false) }
+    var deletionStatus by remember { mutableStateOf("") }
+    var deletionError by remember { mutableStateOf("") }
+
+    // =====================================
+    // STARTA ELLER ÅTERUPPTA KONTORADERING
+    // =====================================
+
+    // Verifierar lösenordet och startar kontoraderingen.
+    // Funktionen kan även anropas när användaren
+    // väljer att försöka igen efter ett avbrott.
+    fun startAccountDeletion() {
+        val activeUser = auth.currentUser
+        val email = activeUser?.email
+
+        when {
+            activeUser == null || email.isNullOrBlank() -> {
+                message = "Du måste vara inloggad."
+            }
+
+            currentPassword.isBlank() -> {
+                message = "Ange ditt nuvarande lösenord."
+            }
+
+            activeUser.providerData.none {
+                it.providerId == "password"
+            } -> {
+                message = "Kontot använder en annan inloggningsmetod."
+            }
+
+            else -> {
+                showDeleteDialog = false
+                showDeletionProgress = true
+                deletionError = ""
+                deletionStatus = "Verifierar lösenord..."
+                isLoading = true
+                message = ""
+
+                // Kontrollera användarens lösenord innan
+                // några uppgifter börjar raderas.
+                val credential = EmailAuthProvider.getCredential(
+                    email,
+                    currentPassword
+                )
+
+                activeUser.reauthenticate(credential)
+                    .addOnSuccessListener {
+
+                        // Starta rensningen av Firestore.
+                        // Repository skickar statusmeddelanden
+                        // som visas i laddningsrutan.
+                        deletionRepository.deleteUserFirestoreData(
+                            onProgress = { status ->
+                                deletionStatus = status
+                            },
+
+                            onSuccess = {
+
+                                // Alla Firestore-steg är klara.
+                                // Radera Firebase Authentication sist.
+                                deletionStatus =
+                                    "Raderar inloggningskontot..."
+
+                                activeUser.delete()
+                                    .addOnSuccessListener {
+
+                                        // Kontot är nu borttaget.
+                                        currentPassword = ""
+                                        isLoading = false
+                                        showDeletionProgress = false
+
+                                        auth.signOut()
+                                        onAccountDeleted()
+                                    }
+                                    .addOnFailureListener { exception ->
+
+                                        // Firestore kan redan vara rensat.
+                                        // Användaren kan försöka igen.
+                                        deletionError =
+                                            "Inloggningskontot kunde inte raderas: " +
+                                                    (exception.localizedMessage
+                                                        ?: "Okänt fel")
+
+                                        isLoading = false
+                                    }
+                            },
+
+                            onError = { exception ->
+
+                                // Raderingen avbröts innan
+                                // Authentication-kontot togs bort.
+                                deletionError =
+                                    "Raderingen avbröts: " +
+                                            (exception.localizedMessage
+                                                ?: "Okänt fel")
+
+                                isLoading = false
+                            }
+                        )
+                    }
+                    .addOnFailureListener {
+
+                        deletionError =
+                            "Kunde inte verifiera lösenordet. " +
+                                    "Kontrollera lösenordet och försök igen."
+
+                        isLoading = false
+                    }
+            }
+        }
+    }
+
+    // =====================================
+    // SYNKRONISERA E-POSTADRESS
+    // =====================================
+
     LaunchedEffect(Unit) {
         val activeUser = auth.currentUser ?: return@LaunchedEffect
 
@@ -57,28 +179,32 @@ fun SettingsScreen(
                             db.collection("användare")
                                 .document(userId)
                                 .update("epost", updatedEmail)
-                                .addOnSuccessListener {
-                                    message = "E-postadressen har synkroniserats!"
-                                }
                                 .addOnFailureListener { exception ->
-                                    message = "Firestore-fel: ${exception.localizedMessage}"
+                                    message =
+                                        "Firestore-fel: ${exception.localizedMessage}"
                                 }
                         }
                         .addOnFailureListener { exception ->
-                            message = "Token-fel: ${exception.localizedMessage}"
+                            message =
+                                "Token-fel: ${exception.localizedMessage}"
                         }
                 } else {
                     message = "E-postadressen är inte verifierad."
                 }
             }
             .addOnFailureListener { exception ->
-                message = "Reload-fel: ${exception.localizedMessage}"
+                message =
+                    "Reload-fel: ${exception.localizedMessage}"
             }
     }
 
     val isEmailAccount = user?.providerData?.any {
         it.providerId == "password"
     } == true
+
+    // =====================================
+    // INSTÄLLNINGSSIDAN
+    // =====================================
 
     Scaffold(
         containerColor = BackgroundColor,
@@ -117,14 +243,22 @@ fun SettingsScreen(
             if (!isEmailAccount) {
                 Text(
                     text = "Den här sidan är avsedd för konton " +
-                        "som loggar in med e-post och lösenord."
+                            "som loggar in med e-post och lösenord."
                 )
             } else {
 
+                // =====================================
+                // NUVARANDE LÖSENORD
+                // =====================================
+
                 OutlinedTextField(
                     value = currentPassword,
-                    onValueChange = { currentPassword = it },
-                    label = { Text("Nuvarande lösenord") },
+                    onValueChange = {
+                        currentPassword = it
+                    },
+                    label = {
+                        Text("Nuvarande lösenord")
+                    },
                     visualTransformation =
                         PasswordVisualTransformation(),
                     singleLine = true,
@@ -132,6 +266,10 @@ fun SettingsScreen(
                 )
 
                 HorizontalDivider()
+
+                // =====================================
+                // ÄNDRA E-POSTADRESS
+                // =====================================
 
                 Text(
                     text = "Ändra e-postadress",
@@ -141,8 +279,12 @@ fun SettingsScreen(
 
                 OutlinedTextField(
                     value = newEmail,
-                    onValueChange = { newEmail = it },
-                    label = { Text("Ny e-postadress") },
+                    onValueChange = {
+                        newEmail = it
+                    },
+                    label = {
+                        Text("Ny e-postadress")
+                    },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -152,14 +294,20 @@ fun SettingsScreen(
                         val activeUser = auth.currentUser
                         val oldEmail = activeUser?.email
 
-                        if (activeUser == null ||
+                        if (
+                            activeUser == null ||
                             oldEmail.isNullOrBlank()
                         ) {
                             message = "Du måste vara inloggad."
+
                         } else if (currentPassword.isBlank()) {
-                            message = "Ange ditt nuvarande lösenord."
+                            message =
+                                "Ange ditt nuvarande lösenord."
+
                         } else if (newEmail.isBlank()) {
-                            message = "Ange en ny e-postadress."
+                            message =
+                                "Ange en ny e-postadress."
+
                         } else {
                             isLoading = true
                             message = ""
@@ -172,6 +320,7 @@ fun SettingsScreen(
 
                             activeUser.reauthenticate(credential)
                                 .addOnSuccessListener {
+
                                     activeUser
                                         .verifyBeforeUpdateEmail(
                                             newEmail.trim()
@@ -179,9 +328,10 @@ fun SettingsScreen(
                                         .addOnSuccessListener {
                                             message =
                                                 "Ett verifieringsmejl har " +
-                                                "skickats till din nya " +
-                                                "e-postadress. Följ " +
-                                                "instruktionerna i mejlet."
+                                                        "skickats till din nya " +
+                                                        "e-postadress. Följ " +
+                                                        "instruktionerna i mejlet."
+
                                             newEmail = ""
                                             isLoading = false
                                         }
@@ -189,12 +339,14 @@ fun SettingsScreen(
                                             message =
                                                 it.localizedMessage
                                                     ?: "Kunde inte ändra e-post."
+
                                             isLoading = false
                                         }
                                 }
                                 .addOnFailureListener {
                                     message =
                                         "Kunde inte verifiera lösenordet."
+
                                     isLoading = false
                                 }
                         }
@@ -210,6 +362,10 @@ fun SettingsScreen(
 
                 HorizontalDivider()
 
+                // =====================================
+                // ÄNDRA LÖSENORD
+                // =====================================
+
                 Text(
                     text = "Ändra lösenord",
                     fontSize = 20.sp,
@@ -218,8 +374,12 @@ fun SettingsScreen(
 
                 OutlinedTextField(
                     value = newPassword,
-                    onValueChange = { newPassword = it },
-                    label = { Text("Nytt lösenord") },
+                    onValueChange = {
+                        newPassword = it
+                    },
+                    label = {
+                        Text("Nytt lösenord")
+                    },
                     visualTransformation =
                         PasswordVisualTransformation(),
                     singleLine = true,
@@ -228,8 +388,12 @@ fun SettingsScreen(
 
                 OutlinedTextField(
                     value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    label = { Text("Bekräfta nytt lösenord") },
+                    onValueChange = {
+                        confirmPassword = it
+                    },
+                    label = {
+                        Text("Bekräfta nytt lösenord")
+                    },
                     visualTransformation =
                         PasswordVisualTransformation(),
                     singleLine = true,
@@ -243,8 +407,10 @@ fun SettingsScreen(
 
                         when {
                             activeUser == null ||
-                                oldEmail.isNullOrBlank() -> {
-                                message = "Du måste vara inloggad."
+                                    oldEmail.isNullOrBlank() -> {
+
+                                message =
+                                    "Du måste vara inloggad."
                             }
 
                             currentPassword.isBlank() -> {
@@ -275,11 +441,13 @@ fun SettingsScreen(
                                 activeUser
                                     .reauthenticate(credential)
                                     .addOnSuccessListener {
+
                                         activeUser
                                             .updatePassword(newPassword)
                                             .addOnSuccessListener {
                                                 message =
                                                     "Lösenordet har ändrats!"
+
                                                 newPassword = ""
                                                 confirmPassword = ""
                                                 currentPassword = ""
@@ -289,12 +457,14 @@ fun SettingsScreen(
                                                 message =
                                                     it.localizedMessage
                                                         ?: "Kunde inte ändra lösenord."
+
                                                 isLoading = false
                                             }
                                     }
                                     .addOnFailureListener {
                                         message =
                                             "Kunde inte verifiera lösenordet."
+
                                         isLoading = false
                                     }
                             }
@@ -309,40 +479,43 @@ fun SettingsScreen(
                     Text("Ändra lösenord")
                 }
             }
+
             // =====================================
             // RADERA KONTO
             // =====================================
 
-                        HorizontalDivider()
+            HorizontalDivider()
 
-                        Text(
-                            text = "Radera konto",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFFB45353)
-                        )
+            Text(
+                text = "Radera konto",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFFB45353)
+            )
 
-                        Text(
-                            text = "Om du raderar ditt konto förlorar du åtkomsten till Hildas Tassebo. Åtgärden kan inte ångras.",
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
+            Text(
+                text = "Om du raderar ditt konto förlorar du åtkomsten till Hildas Tassebo. Åtgärden kan inte ångras.",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
 
-                        OutlinedButton(
-                            onClick = {
-                                showDeleteDialog = true
-                            },
-                            enabled = !isLoading && user != null,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color(0xFFB45353)
-                            )
-                        ) {
-                            Text("Radera mitt konto")
-                        }
+            OutlinedButton(
+                onClick = {
+                    showDeleteDialog = true
+                },
+                enabled = !isLoading && user != null,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFFB45353)
+                )
+            ) {
+                Text("Radera mitt konto")
+            }
 
             if (isLoading) {
-                CircularProgressIndicator(color = SageGreen)
+                CircularProgressIndicator(
+                    color = SageGreen
+                )
             }
 
             if (message.isNotBlank()) {
@@ -353,152 +526,147 @@ fun SettingsScreen(
                 )
             }
         }
-
     }
 
-            // =====================================
-            // BEKRÄFTA RADERING AV KONTO
-            // =====================================
+    // =====================================
+    // BEKRÄFTA RADERING AV KONTO
+    // =====================================
 
-            if (showDeleteDialog) {
-                AlertDialog(
-                    onDismissRequest = {
-                        showDeleteDialog = false
-                    },
-                    title = {
-                        Text("Radera konto?")
-                    },
-                    text = {
-                        Text(
-                            "Är du säker på att du vill radera ditt konto? " +
-                                    "Detta går inte att ångra. " +
-                                    "Du behöver ange ditt nuvarande lösenord " +
-                                    "i inställningarna innan kontot kan raderas."
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                showDeleteDialog = false
-
-                                val activeUser = auth.currentUser
-                                val email = activeUser?.email
-
-                                when {
-                                    activeUser == null || email.isNullOrBlank() -> {
-                                        message = "Du måste vara inloggad."
-                                    }
-
-                                    currentPassword.isBlank() -> {
-                                        message = "Ange ditt nuvarande lösenord."
-                                    }
-
-                                    !isEmailAccount -> {
-                                        message = "Kontot använder en annan inloggningsmetod."
-                                    }
-
-                                    else -> {
-                                        isLoading = true
-                                        message = ""
-
-                                        // Verifiera användarens nuvarande lösenord
-                                        val credential = EmailAuthProvider.getCredential(
-                                            email,
-                                            currentPassword
-                                        )
-
-                                        activeUser.reauthenticate(credential)
-                                            .addOnSuccessListener {
-
-                                                // Kontrollera att Firestore-profilen finns
-                                                val userDocument = db.collection("användare")
-                                                    .document(activeUser.uid)
-
-                                                userDocument.get()
-                                                    .addOnSuccessListener { document ->
-
-                                                        if (!document.exists()) {
-                                                            isLoading = false
-                                                            message = "Användarprofilen saknas i Firestore."
-                                                        } else {
-
-                                                            // Radera Firestore-profilen
-                                                            userDocument.delete()
-                                                                .addOnSuccessListener {
-
-                                                                    // Radera Authentication-kontot
-                                                                    activeUser.delete()
-                                                                        .addOnSuccessListener {
-                                                                            isLoading = false
-                                                                            auth.signOut()
-                                                                            onAccountDeleted()
-                                                                        }
-                                                                        .addOnFailureListener { exception ->
-
-                                                                            // Försök återställa profilen om Authentication-raderingen misslyckas
-                                                                            val previousData = document.data
-
-                                                                            if (previousData != null) {
-                                                                                userDocument.set(previousData)
-                                                                                    .addOnSuccessListener {
-                                                                                        isLoading = false
-                                                                                        message =
-                                                                                            "Kontot kunde inte raderas. " +
-                                                                                                    "Din profil har återställts. Försök igen."
-                                                                                    }
-                                                                                    .addOnFailureListener {
-                                                                                        isLoading = false
-                                                                                        message =
-                                                                                            "Kontot kunde inte raderas och profilen kunde inte " +
-                                                                                                    "återställas. Kontakta administratören."
-                                                                                    }
-                                                                            } else {
-                                                                                isLoading = false
-                                                                                message =
-                                                                                    "Kontot kunde inte raderas: " +
-                                                                                            "${exception.localizedMessage}"
-                                                                            }
-                                                                        }
-                                                                }
-                                                                .addOnFailureListener { exception ->
-                                                                    isLoading = false
-                                                                    message =
-                                                                        "Kunde inte radera profilen: " +
-                                                                                "${exception.localizedMessage}"
-                                                                }
-                                                        }
-                                                    }
-                                                    .addOnFailureListener { exception ->
-                                                        isLoading = false
-                                                        message =
-                                                            "Kunde inte kontrollera profilen: " +
-                                                                    "${exception.localizedMessage}"
-                                                    }
-                                            }
-                                            .addOnFailureListener {
-                                                isLoading = false
-                                                message = "Kunde inte verifiera lösenordet."
-                                            }
-                                    }
-                                }
-                            }
-                        ) {
-                            Text(
-                                "Radera konto",
-                                color = Color(0xFFB45353)
-                            )
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = {
-                                showDeleteDialog = false
-                            }
-                        ) {
-                            Text("Avbryt")
-                        }
-                    }
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteDialog = false
+            },
+            title = {
+                Text("Radera konto?")
+            },
+            text = {
+                Text(
+                    "Är du säker på att du vill radera ditt konto och " +
+                            "tillhörande uppgifter? Detta går inte att ångra. " +
+                            "Ange ditt nuvarande lösenord i inställningarna först."
                 )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        startAccountDeletion()
+                    }
+                ) {
+                    Text(
+                        "Radera konto",
+                        color = Color(0xFFB45353)
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Avbryt")
+                }
             }
+        )
+    }
 
+    // =====================================
+    // STATUS UNDER KONTORADERING
+    // =====================================
+
+    if (showDeletionProgress) {
+        AlertDialog(
+
+            // Dialogen kan inte stängas genom att
+            // trycka utanför medan raderingen pågår.
+            onDismissRequest = {},
+
+            title = {
+                Text("Ditt konto raderas")
+            },
+
+            text = {
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(16.dp)
+                ) {
+
+                    if (isLoading) {
+
+                        // Visa laddningsindikator.
+                        CircularProgressIndicator(
+                            color = SageGreen
+                        )
+
+                        // Visa det aktuella steget.
+                        Text(deletionStatus)
+
+                        // Informera användaren om att
+                        // behålla appen öppen.
+                        Text(
+                            "Behåll appen öppen tills raderingen är klar. " +
+                                    "Det kan ta en stund om du har många bokningar.",
+                            color = Color.Gray,
+                            fontSize = 14.sp
+                        )
+
+                    } else {
+
+                        // Visa felmeddelandet om
+                        // raderingen har avbrutits.
+                        Text(
+                            deletionError,
+                            color = Color(0xFFB45353)
+                        )
+
+                        // Informera om återförsök.
+                        Text(
+                            "Kontot är ännu inte bekräftat som raderat. " +
+                                    "Kontrollera anslutningen och försök igen. " +
+                                    "Redan raderade dokument behöver inte raderas på nytt.",
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            },
+
+            confirmButton = {
+
+                // Visa knappen först om
+                // raderingen har misslyckats.
+                if (!isLoading) {
+                    TextButton(
+                        onClick = {
+                            startAccountDeletion()
+                        }
+                    ) {
+                        Text(
+                            "Försök igen",
+                            color = SageGreen
+                        )
+                    }
+                }
+            },
+
+            dismissButton = {
+
+                // Användaren kan stänga felmeddelandet
+                // och försöka igen från inställningarna.
+                if (!isLoading) {
+                    TextButton(
+                        onClick = {
+                            showDeletionProgress = false
+
+                            message =
+                                "Kontoraderingen är inte slutförd. " +
+                                        "Du kan försöka igen från inställningarna."
+                        }
+                    ) {
+                        Text("Stäng")
+                    }
+                }
+            }
+        )
+    }
 }

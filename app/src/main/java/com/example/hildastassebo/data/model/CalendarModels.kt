@@ -1,20 +1,20 @@
+
 package com.example.hildastassebo.data.model
 
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-
 // Datamodeller för kalenderns evenemang och anteckningar.
-
 
 data class CalendarEvent(
     val id: String,
     val date: LocalDate,
     val title: String,
     val description: String,
-    val time: String
+    val time: String,
+    // Användar-ID för den som skapade evenemanget.
+    val creatorId: String = ""
 )
-
 
 data class CalendarNote(
     val id: String,
@@ -24,3 +24,4 @@ data class CalendarNote(
     val createdAt: LocalDateTime,
     val isAdminNote: Boolean = false
 )
+

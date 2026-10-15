@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Settings
 
@@ -26,6 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 import com.google.firebase.auth.FirebaseAuth
+
+import com.example.hildastassebo.data.repository.ShiftRepository
+import com.example.hildastassebo.data.repository.SavedShiftBooking
+import java.time.LocalDate
 
 private val DarkSage = Color(0xFF47796C)
 private val PaleSage = Color(0xFFE7F0EB)
@@ -48,6 +52,59 @@ fun ProfileScreen(
         ?: "Volontär"
 
     val email = user?.email ?: ""
+
+    val currentUserId = user?.uid.orEmpty()
+    val shiftRepository = remember { ShiftRepository() }
+
+    var myBookings by remember(currentUserId) {
+        mutableStateOf(emptyList<SavedShiftBooking>())
+    }
+
+    DisposableEffect(currentUserId) {
+        if (currentUserId.isBlank()) {
+            myBookings = emptyList()
+            onDispose { }
+        } else {
+            val listener = shiftRepository.observeBookings(
+                onUpdate = { allBookings ->
+                    myBookings = allBookings.filter {
+                        it.userId == currentUserId
+                    }
+                },
+                onError = { exception ->
+                    android.util.Log.e(
+                        "ProfileScreen",
+                        "Kunde inte hämta arbetspass",
+                        exception
+                    )
+                }
+            )
+
+            onDispose {
+                listener.remove()
+            }
+        }
+    }
+
+    val today = LocalDate.now()
+
+// Räknar bokade arbetspass som redan har ägt rum,
+// inklusive dagens datum.
+    val completedBookings = myBookings.filter {
+        !it.date.isAfter(today)
+    }
+
+    val shiftsLastWeek = completedBookings.count {
+        !it.date.isBefore(today.minusDays(6))
+    }
+
+    val shiftsLastMonth = completedBookings.count {
+        !it.date.isBefore(today.minusMonths(1))
+    }
+
+    val shiftsLastYear = completedBookings.count {
+        !it.date.isBefore(today.minusYears(1))
+    }
 
     // Dialog för att bekräfta utloggning
     var showLogoutDialog by remember {
@@ -170,19 +227,19 @@ fun ProfileScreen(
 
                     ShiftStatCard(
                         label = "Senaste veckan",
-                        count = 0,
+                        count = shiftsLastWeek,
                         modifier = Modifier.weight(1f)
                     )
 
                     ShiftStatCard(
                         label = "Senaste månaden",
-                        count = 0,
+                        count = shiftsLastMonth,
                         modifier = Modifier.weight(1f)
                     )
 
                     ShiftStatCard(
                         label = "Senaste året",
-                        count = 0,
+                        count = shiftsLastYear,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -247,7 +304,7 @@ fun ProfileScreen(
                 ) {
 
                     Icon(
-                        imageVector = Icons.Outlined.Logout,
+                        imageVector = Icons.AutoMirrored.Outlined.Logout,
                         contentDescription = null,
                         tint = Color(0xFFB45353)
                     )

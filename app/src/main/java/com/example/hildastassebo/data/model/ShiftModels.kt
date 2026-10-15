@@ -14,7 +14,8 @@ enum class ShiftType(val label: String) {
 data class ShiftBooking(
     val name: String,
     val isMe: Boolean = false,
-    val wantsToWorkAlone: Boolean = false
+    val wantsToWorkAlone: Boolean = false,
+    val userId: String = ""
 )
 
 data class ShiftKey(

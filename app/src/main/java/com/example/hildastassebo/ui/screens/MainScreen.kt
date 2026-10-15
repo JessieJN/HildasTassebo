@@ -7,43 +7,67 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 
-import com.example.hildastassebo.ui.navigation.BottomNavigationBar
 import com.example.hildastassebo.data.model.CalendarEvent
-import com.google.firebase.auth.FirebaseAuth
-import java.time.LocalDate
-import com.google.firebase.firestore.FirebaseFirestore
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.saveable.rememberSaveable
+import com.example.hildastassebo.data.repository.EventRepository
+import com.example.hildastassebo.ui.navigation.BottomNavigationBar
 import com.example.hildastassebo.ui.navigation.SettingsScreen
-
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import java.time.LocalDate
 
 @Composable
 fun MainScreen(
     onLogout: () -> Unit
 ) {
 
-    // Håller reda på vilken flik som är vald
-    var selectedTab by rememberSaveable  {
+    // Håller reda på vilken flik som är vald.
+    var selectedTab by rememberSaveable {
         mutableStateOf("home")
     }
 
-    // Gemensam lista för evenemang i kalendern och på startsidan
+    // Gemensam lista för evenemang i kalendern och på startsidan.
     val events = remember {
         mutableStateMapOf<LocalDate, List<CalendarEvent>>()
     }
 
-    // Håller reda på om inställningssidan ska visas
-    var showSettings by rememberSaveable  {
+    // Hämtar evenemang från Firebase oavsett vilken flik som visas.
+    val eventRepository = remember { EventRepository() }
+
+    DisposableEffect(eventRepository) {
+        val listener = eventRepository.observeEvents(
+            onUpdate = { eventsByDate ->
+                events.clear()
+                events.putAll(eventsByDate)
+            },
+            onError = { exception ->
+                android.util.Log.e(
+                    "MainScreen",
+                    "Kunde inte hämta evenemang",
+                    exception
+                )
+            }
+        )
+
+        onDispose {
+            listener.remove()
+        }
+    }
+
+    // Håller reda på om inställningssidan ska visas.
+    var showSettings by rememberSaveable {
         mutableStateOf(false)
     }
+
     var showStatistics by remember {
         mutableStateOf(false)
     }
-    // Hämtar inloggad användares roll från Firebase
+
+    // Hämtar inloggad användares roll från Firebase.
     var userRole by remember { mutableStateOf<Long?>(null) }
 
     DisposableEffect(Unit) {
@@ -57,7 +81,6 @@ fun MainScreen(
                 .collection("användare")
                 .document(userId)
                 .addSnapshotListener { document, error ->
-
                     if (error != null) {
                         android.util.Log.e(
                             "HildasFirestore",
@@ -84,7 +107,7 @@ fun MainScreen(
     Scaffold(
         containerColor = Color.White,
 
-        // Navigationsbaren längst ner
+        // Navigationsbaren längst ner.
         bottomBar = {
             BottomNavigationBar(
                 selectedTab = selectedTab,
@@ -122,7 +145,7 @@ fun MainScreen(
                 .fillMaxSize()
         ) {
 
-            // Visa inställningar eller vald flik
+            // Visa inställningar eller vald flik.
             if (showSettings) {
 
                 SettingsScreen(
@@ -163,7 +186,7 @@ fun MainScreen(
                         events = events
                     )
 
-                    // MIN SIDA – olika beroende på användarens roll
+                    // MIN SIDA – olika beroende på användarens roll.
                     "profile" -> {
                         when (userRole) {
                             1L -> AdminScreen(
@@ -175,6 +198,7 @@ fun MainScreen(
                                     showStatistics = true
                                 }
                             )
+
                             0L -> ProfileScreen(
                                 onLogout = onLogout,
                                 onSettingsClick = {
@@ -209,3 +233,4 @@ fun MainScreenPreview() {
         onLogout = {}
     )
 }
+

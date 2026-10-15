@@ -33,7 +33,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import com.google.firebase.firestore.FirebaseFirestore
 
 // Färgtema från designen
 private val Sage = Color(0xFF91B1A3)
@@ -269,6 +268,7 @@ fun LoginScreen(
 
             Spacer(Modifier.height(28.dp))
 
+
             // Inloggningsknapp
             Button(
                 onClick = {
@@ -279,50 +279,43 @@ fun LoginScreen(
                         email.trim(),
                         password
                     ).addOnCompleteListener { task ->
+
                         if (task.isSuccessful) {
                             val user = auth.currentUser
 
                             user?.reload()?.addOnCompleteListener { reloadTask ->
+
                                 if (reloadTask.isSuccessful && user.isEmailVerified) {
 
-                                    // Kontrollera att användaren fortfarande har en profil i Firestore
-                                    FirebaseFirestore.getInstance()
-                                        .collection("användare")
-                                        .document(user.uid)
-                                        .get()
-                                        .addOnSuccessListener { document ->
-
-                                            if (document.exists()) {
-                                                // Kontot finns i både Authentication och Firestore
-                                                onLoginSuccess()
-                                            } else {
-                                                // Authentication-kontot finns kvar, men profilen är borttagen
-                                                error = "Ditt användarkonto finns inte längre."
-                                                auth.signOut()
-                                            }
-
-                                            loading = false
-                                        }
-                                        .addOnFailureListener {
-                                            error = "Kunde inte kontrollera ditt konto. Försök igen."
-                                            auth.signOut()
-                                            loading = false
-                                        }
+                                    // Firebase Authentication har godkänt inloggningen
+                                    // och användarens e-postadress är verifierad.
+                                    //
+                                    // MainActivity kontrollerar användarprofilen
+                                    // och hanterar eventuell avbruten kontoradering.
+                                    onLoginSuccess()
 
                                 } else if (reloadTask.isSuccessful) {
+
                                     error = "Du måste verifiera din e-postadress innan du kan logga in."
                                     auth.signOut()
+
                                 } else {
+
                                     error = "Kunde inte kontrollera e-postverifieringen. Försök igen."
                                     auth.signOut()
                                 }
+
                                 loading = false
+
                             } ?: run {
+
                                 error = "Kunde inte hitta användaren."
                                 auth.signOut()
                                 loading = false
                             }
+
                         } else {
+
                             error = when (task.exception) {
                                 is FirebaseNetworkException ->
                                     "Ingen internetanslutning. Kontrollera nätverket och försök igen."
@@ -365,6 +358,7 @@ fun LoginScreen(
                     )
                 }
             }
+
 
             Spacer(Modifier.height(24.dp))
 

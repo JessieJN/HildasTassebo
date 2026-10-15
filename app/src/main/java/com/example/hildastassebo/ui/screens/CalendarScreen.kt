@@ -50,6 +50,11 @@ import com.example.hildastassebo.data.model.Volunteer
 import com.example.hildastassebo.data.repository.VolunteerRepository
 import com.example.hildastassebo.ui.screens.calendar.AdminVolunteerPickerDialog
 import com.example.hildastassebo.data.repository.ShiftRepository
+import androidx.compose.runtime.DisposableEffect
+import com.example.hildastassebo.data.repository.SavedShiftBooking
+import com.example.hildastassebo.data.repository.NoteRepository
+import com.example.hildastassebo.data.repository.EventRepository
+
 
 // ============================================================
 // FÄRGER OCH GRUNDINSTÄLLNINGAR
@@ -85,6 +90,8 @@ fun CalendarScreen(
 
     val volunteerRepository = remember { VolunteerRepository() }
     val shiftRepository = remember { ShiftRepository() }
+    val noteRepository = remember { NoteRepository() }
+    val eventRepository = remember { EventRepository() }
     val today = remember { LocalDate.now() }
 
     var selectedDate by remember { mutableStateOf(today) }
@@ -97,12 +104,32 @@ fun CalendarScreen(
     }
     var wantsToWorkAlone by remember { mutableStateOf(false) }
 
-    // ANTECKNINGAR: tillfälligt i minnet, ännu inte sparade i Firestore.
+    // ANTECKNINGAR: hämtas från Firestore och uppdateras i realtid.
     var showNoteDialog by remember { mutableStateOf(false) }
     var noteText by remember { mutableStateOf("") }
     var editingNote by remember { mutableStateOf<CalendarNote?>(null) }
     var noteToDelete by remember { mutableStateOf<CalendarNote?>(null) }
     val notes = remember { mutableStateMapOf<LocalDate, List<CalendarNote>>() }
+
+    DisposableEffect(noteRepository) {
+        val listener = noteRepository.observeNotes(
+            onUpdate = { notesByDate ->
+                notes.clear()
+                notes.putAll(notesByDate)
+            },
+            onError = { exception ->
+                android.util.Log.e(
+                    "CalendarScreen",
+                    "Kunde inte hämta anteckningar",
+                    exception
+                )
+            }
+        )
+
+        onDispose {
+            listener.remove()
+        }
+    }
 
 
     var showEventDialog by remember { mutableStateOf(false) }
@@ -139,32 +166,74 @@ fun CalendarScreen(
         DateTimeFormatter.ofPattern("d MMM yyyy 'kl.' HH:mm", Swedish)
     }
 
-    // Tillfälliga bokningar för att kunna testa designen.
-    // Dessa ersätts senare med data från Firebase.
+
     val bookings = remember {
-        mutableStateMapOf<ShiftKey, List<ShiftBooking>>().apply {
-            val monday = today.minusDays(
-                (today.dayOfWeek.value - 1).toLong()
-            )
+        mutableStateMapOf<ShiftKey, List<ShiftBooking>>()
+    }
 
-            this[ShiftKey(monday, ShiftType.MORNING)] =
-                listOf(ShiftBooking("Anna"))
+    val userNames = remember {
+        mutableStateMapOf<String, String>()
+    }
 
-            this[ShiftKey(monday.plusDays(1), ShiftType.MORNING)] =
-                listOf(ShiftBooking("Maria"), ShiftBooking("Erik"))
+    var savedBookings by remember {
+        mutableStateOf(
+            emptyList<SavedShiftBooking>()
+        )
+    }
 
-            this[ShiftKey(monday.plusDays(2), ShiftType.AFTERNOON)] =
-                listOf(
-                    ShiftBooking(
-                        "Sofia",
-                        wantsToWorkAlone = true
-                    )
-                )
+    DisposableEffect(Unit) {
+        val usersListener = FirebaseFirestore.getInstance()
+            .collection("användare")
+            .addSnapshotListener { snapshot, error ->
+                if (error == null) {
+                    userNames.clear()
 
-            this[ShiftKey(monday.plusDays(4), ShiftType.MORNING)] =
-                listOf(ShiftBooking("Linda"))
+                    snapshot?.documents?.forEach { document ->
+                        val firstName =
+                            document.getString("förnamn").orEmpty()
+                        val lastName =
+                            document.getString("efternamn").orEmpty()
+
+                        userNames[document.id] =
+                            "$firstName $lastName".trim()
+                    }
+                }
+            }
+
+
+        val bookingsListener = shiftRepository.observeBookings(
+            onUpdate = { savedBookings = it },
+            onError = { exception ->
+                adminVolunteerError =
+                    exception.localizedMessage
+                        ?: "Kunde inte hämta bokningar."
+            }
+        )
+
+        onDispose {
+            usersListener.remove()
+            bookingsListener.remove()
         }
     }
+
+    LaunchedEffect(savedBookings, userNames.toMap(), currentUserId) {
+        bookings.clear()
+
+        savedBookings
+            .groupBy { ShiftKey(it.date, it.shiftType) }
+            .forEach { (key, saved) ->
+                bookings[key] = saved.map { booking ->
+                    ShiftBooking(
+                        name = userNames[booking.userId]
+                            ?: "Okänd användare",
+                        isMe = booking.userId == currentUserId,
+                        wantsToWorkAlone = booking.wantsToWorkAlone,
+                        userId = booking.userId
+                    )
+                }
+            }
+    }
+
 
     val weekStart = selectedDate.minusDays(
         (selectedDate.dayOfWeek.value - 1).toLong()
@@ -537,6 +606,9 @@ fun CalendarScreen(
                                             )
                                         } else {
                                             dateEvents.forEach { event ->
+                                                // Endast skaparen eller admin får ändra evenemanget.
+                                                val canManageEvent = currentUserId.isNotEmpty() &&
+                                                        (event.creatorId == currentUserId || isAdmin)
                                                 Column(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -553,6 +625,7 @@ fun CalendarScreen(
                                                             modifier = Modifier.weight(1f)
                                                         )
 
+                                                        if (canManageEvent) {
                                                         // Redigera evenemang
                                                         IconButton(
                                                             onClick = {
@@ -585,6 +658,7 @@ fun CalendarScreen(
                                                                 tint = Muted,
                                                                 modifier = Modifier.size(19.dp)
                                                             )
+                                                        }
                                                         }
                                                     }
 
@@ -762,6 +836,7 @@ fun CalendarScreen(
                         volunteer = volunteer,
                         date = selectedDate,
                         shiftType = shiftType,
+                        wantsToWorkAlone = wantsToWorkAlone,
                         onSuccess = {
                             showAdminVolunteerPicker = false
                         },
@@ -792,6 +867,7 @@ fun CalendarScreen(
 
     // Dialogernas originalkod ligger nu i respektive kalenderfil.
     // Tillståndet ägs fortfarande av CalendarScreen, så beteendet är oförändrat.
+
     CalendarShiftDialogs(
         selectedDate = selectedDate,
         dateFormatter = dateFormatter,
@@ -802,8 +878,61 @@ fun CalendarScreen(
         onShiftToCancelChange = { shiftToCancel = it },
         bookingToCancel = bookingToCancel,
         wantsToWorkAlone = wantsToWorkAlone,
-        onWantsToWorkAloneChange = { wantsToWorkAlone = it }
+        onWantsToWorkAloneChange = { wantsToWorkAlone = it },
+
+        onBookShift = { shiftType, workAlone ->
+            shiftRepository.bookOwnShift(
+                date = selectedDate,
+                shiftType = shiftType,
+                wantsToWorkAlone = workAlone,
+                onSuccess = {
+                    bookingDialog = null
+                    wantsToWorkAlone = false
+                },
+                onError = { exception ->
+                    adminVolunteerError =
+                        exception.localizedMessage
+                            ?: "Kunde inte boka arbetspasset."
+                }
+            )
+        },
+
+        onCancelShift = {
+            val selectedShift = shiftToCancel
+            val selectedBooking = bookingToCancel
+
+            if (selectedShift != null && selectedBooking != null) {
+                val onSuccess = {
+                    shiftToCancel = null
+                    bookingToCancel = null
+                }
+
+                val onError: (Exception) -> Unit = { exception ->
+                    adminVolunteerError =
+                        exception.localizedMessage
+                            ?: "Kunde inte avboka arbetspasset."
+                }
+
+                if (isAdmin) {
+                    shiftRepository.adminCancelShift(
+                        userId = selectedBooking.userId,
+                        date = selectedShift.date,
+                        shiftType = selectedShift.type,
+                        onSuccess = onSuccess,
+                        onError = onError
+                    )
+                } else if (selectedBooking.isMe) {
+                    shiftRepository.cancelOwnShift(
+                        date = selectedShift.date,
+                        shiftType = selectedShift.type,
+                        onSuccess = onSuccess,
+                        onError = onError
+                    )
+                }
+            }
+        }
     )
+
     CalendarEventDialogs(
         selectedDate = selectedDate,
         dateFormatter = dateFormatter,
@@ -819,7 +948,13 @@ fun CalendarScreen(
         editingEvent = editingEvent,
         onEditingEventChange = { editingEvent = it },
         eventToDelete = eventToDelete,
-        onEventToDeleteChange = { eventToDelete = it }
+        onEventToDeleteChange = { eventToDelete = it },
+        eventRepository = eventRepository,
+        onEventError = { exception ->
+            adminVolunteerError =
+                exception.localizedMessage
+                    ?: "Kunde inte hantera evenemanget."
+        }
     )
     CalendarNoteDialogs(
         selectedDate = selectedDate,
@@ -835,7 +970,13 @@ fun CalendarScreen(
         onNoteToDeleteChange = { noteToDelete = it },
         currentUserId = currentUserId,
         currentUserName = currentUserName,
-        isAdmin = isAdmin
+        isAdmin = isAdmin,
+        noteRepository = noteRepository,
+        onNoteError = { exception ->
+            adminVolunteerError =
+                exception.localizedMessage
+                    ?: "Kunde inte hantera anteckningen."
+        }
     )
 
 }
