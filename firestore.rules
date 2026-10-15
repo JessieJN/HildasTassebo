@@ -1,0 +1,361 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function loggedIn() {
+      return request.auth != null;
+    }
+    function profile(uid) {
+      return /databases/$(database)/documents/$( 'användare' )/$(uid);
+    }
+    function hasProfile(uid) {
+      return loggedIn() && exists(profile(uid));
+    }
+    function deleting(uid) {
+      return hasProfile(uid)
+        && get(profile(uid)).data.get('kontoradering_pågår', false) == true;
+    }
+    function active(uid) {
+      return hasProfile(uid) && !deleting(uid);
+    }
+    function self(uid) {
+      return loggedIn() && request.auth.uid == uid;
+    }
+    function activeSelf() {
+      return loggedIn() && active(request.auth.uid);
+    }
+    function admin() {
+      return activeSelf()
+        && get(profile(request.auth.uid)).data.roll == 1;
+    }
+    function cleanup(uid) {
+      return self(uid) && (!hasProfile(uid) || deleting(uid));
+    }
+    function validDate(id) {
+      return id.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+    function shiftPath(dateId) {
+      return /databases/$(database)/documents/$( 'arbetspass' )/$(dateId);
+    }
+    function bookingPath(dateId, type, uid) {
+      return /databases/$(database)/documents/$( 'bokningar' )/$(dateId + '_' + type + '_' + uid);
+    }
+    function bookingAfter(dateId, type, uid) {
+      return getAfter(bookingPath(dateId, type, uid)).data;
+    }
+    function validBookingAfter(dateId, type, uid, alone) {
+      return existsAfter(bookingPath(dateId, type, uid))
+        && bookingAfter(dateId, type, uid)['användar_id'] == uid
+        && bookingAfter(dateId, type, uid)['arbetspass_id'] == dateId
+        && bookingAfter(dateId, type, uid)['passtyp'] == type
+        && bookingAfter(dateId, type, uid)['önskar_arbeta_själv'] == alone;
+    }
+    function validShiftData(data, dateId) {
+      return validDate(dateId)
+        && data.keys().hasAll(['datum', 'förmiddag', 'eftermiddag'])
+        && data.keys().hasOnly([
+          'datum', 'förmiddag', 'eftermiddag',
+          'förmiddag_bokade', 'eftermiddag_bokade',
+          'förmiddag_ensam', 'eftermiddag_ensam'
+        ])
+        && data.datum is timestamp
+        && data['förmiddag'] is string
+        && data['eftermiddag'] is string
+        && data.get('förmiddag_bokade', []) is list
+        && data.get('eftermiddag_bokade', []) is list
+        && data.get('förmiddag_ensam', false) is bool
+        && data.get('eftermiddag_ensam', false) is bool;
+    }
+
+    match /{collection}/{uid} {
+      allow read: if collection == 'användare' && loggedIn();
+
+      allow create: if collection == 'användare' && self(uid)
+        && request.resource.data.keys().hasAll([
+          'förnamn', 'efternamn', 'epost', 'roll'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'förnamn', 'efternamn', 'epost', 'roll'
+        ])
+        && request.resource.data['förnamn'] is string
+        && request.resource.data['efternamn'] is string
+        && request.resource.data['epost'] == request.auth.token.email
+        && request.resource.data.roll == 0;
+
+      allow update: if collection == 'användare' && admin()
+        && !deleting(uid)
+        && (request.auth.uid != uid || request.resource.data.roll == 1)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['förnamn', 'efternamn', 'roll'])
+        && request.resource.data['förnamn'] is string
+        && request.resource.data['efternamn'] is string
+        && request.resource.data.roll in [0, 1];
+
+      allow update: if collection == 'användare' && self(uid)
+        && !deleting(uid)
+        && request.auth.token.email_verified == true
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['epost'])
+        && request.resource.data.epost == request.auth.token.email;
+
+      allow update: if collection == 'användare' && self(uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['kontoradering_pågår'])
+        && request.resource.data['kontoradering_pågår'] == true;
+
+      allow delete: if collection == 'användare' && self(uid);
+    }
+
+    match /bokningar/{bookingId} {
+      allow read: if loggedIn();
+
+      function validBooking() {
+        let b = request.resource.data;
+        return b.keys().hasAll([
+          'användar_id', 'arbetspass_id', 'passtyp',
+          'bokad_tidpunkt', 'önskar_arbeta_själv'
+        ])
+        && b.keys().hasOnly([
+          'användar_id', 'arbetspass_id', 'passtyp',
+          'bokad_tidpunkt', 'önskar_arbeta_själv'
+        ])
+        && b['användar_id'] is string
+        && b['arbetspass_id'] is string
+        && validDate(b['arbetspass_id'])
+        && b['passtyp'] in ['MORNING', 'AFTERNOON']
+        && b['bokad_tidpunkt'] == request.time
+        && b['önskar_arbeta_själv'] is bool
+        && bookingId == b['arbetspass_id'] + '_' +
+          b['passtyp'] + '_' + b['användar_id'];
+      }
+      function bookedAfter() {
+        let b = request.resource.data;
+        let d = getAfter(shiftPath(b['arbetspass_id'])).data;
+        let morning = b['passtyp'] == 'MORNING';
+        let field = morning ? 'förmiddag_bokade' : 'eftermiddag_bokade';
+        let aloneField = morning ? 'förmiddag_ensam' : 'eftermiddag_ensam';
+        return existsAfter(shiftPath(b['arbetspass_id']))
+          && b['användar_id'] in d.get(field, [])
+          && d.get(aloneField, false) == b['önskar_arbeta_själv'];
+      }
+      function unbookedAfter() {
+        let b = resource.data;
+        let d = getAfter(shiftPath(b['arbetspass_id'])).data;
+        let field = b['passtyp'] == 'MORNING'
+          ? 'förmiddag_bokade' : 'eftermiddag_bokade';
+        return existsAfter(shiftPath(b['arbetspass_id']))
+          && !(b['användar_id'] in d.get(field, []));
+      }
+      function cancellationAllowed() {
+        return admin() || (
+          self(resource.data['användar_id'])
+          && get(shiftPath(resource.data['arbetspass_id'])).data.datum
+            > request.time + duration.value(7, 'd')
+        );
+      }
+      allow create: if activeSelf()
+        && validBooking()
+        && active(request.resource.data['användar_id'])
+        && (admin() || self(request.resource.data['användar_id']))
+        && bookedAfter();
+
+      allow update: if false;
+
+      allow delete: if (
+        activeSelf() && cancellationAllowed() && unbookedAfter()
+      ) || cleanup(resource.data['användar_id']);
+    }
+
+    match /arbetspass/{dateId} {
+      allow read: if loggedIn();
+
+      function initialBooking(field, type, otherField, aloneField) {
+        let d = request.resource.data;
+        let ids = d.get(field, []);
+        return ids.size() == 1
+          && d.get(otherField, []).size() == 0
+          && (admin() || ids[0] == request.auth.uid)
+          && active(ids[0])
+          && validBookingAfter(dateId, type, ids[0], d.get(aloneField, false))
+          && (!d.get(aloneField, false) || ids.size() == 1);
+      }
+      allow create: if activeSelf()
+        && validShiftData(request.resource.data, dateId)
+        && request.resource.data['förmiddag'] == ''
+        && request.resource.data['eftermiddag'] == ''
+        && (
+          initialBooking(
+            'förmiddag_bokade', 'MORNING',
+            'eftermiddag_bokade', 'förmiddag_ensam'
+          )
+          || initialBooking(
+            'eftermiddag_bokade', 'AFTERNOON',
+            'förmiddag_bokade', 'eftermiddag_ensam'
+          )
+        );
+
+      function addOne(field, aloneField, type) {
+        let old = resource.data.get(field, []);
+        let now = request.resource.data.get(field, []);
+        let added = now.removeAll(old);
+        return added.size() == 1
+          && old.removeAll(now).size() == 0
+          && now.size() == old.size() + 1
+          && (admin() || added[0] == request.auth.uid)
+          && active(added[0])
+          && !exists(bookingPath(dateId, type, added[0]))
+          && validBookingAfter(
+            dateId, type, added[0],
+            request.resource.data.get(aloneField, false)
+          )
+          && !resource.data.get(aloneField, false)
+          && (
+            !request.resource.data.get(aloneField, false)
+            || old.size() == 0
+          );
+      }
+      function removeOne(field, aloneField, type) {
+        let old = resource.data.get(field, []);
+        let now = request.resource.data.get(field, []);
+        let removed = old.removeAll(now);
+        return removed.size() == 1
+          && now.removeAll(old).size() == 0
+          && old.size() == now.size() + 1
+          && (admin() || removed[0] == request.auth.uid)
+          && exists(bookingPath(dateId, type, removed[0]))
+          && !existsAfter(bookingPath(dateId, type, removed[0]))
+          && (
+            admin()
+            || resource.data.datum > request.time + duration.value(7, 'd')
+          )
+          && request.resource.data.get(aloneField, false)
+             == (old.size() == 1
+                 ? false
+                 : resource.data.get(aloneField, false));
+      }
+      function normalChange(field, aloneField, type) {
+        return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([field, aloneField])
+          && (
+            addOne(field, aloneField, type)
+            || removeOne(field, aloneField, type)
+          );
+      }
+      function removeOwnForDeletion(field, aloneField) {
+        let old = resource.data.get(field, []);
+        let now = request.resource.data.get(field, []);
+        return request.auth.uid in old
+          && !(request.auth.uid in now)
+          && old.size() == now.size() + 1
+          && old.removeAll(now).size() == 1
+          && now.removeAll(old).size() == 0
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([field, aloneField])
+          && request.resource.data.get(aloneField, false)
+            == (old.size() == 1
+                ? false
+                : resource.data.get(aloneField, false));
+      }
+      allow update: if validShiftData(request.resource.data, dateId)
+        && (
+          (
+            activeSelf()
+            && (
+              normalChange(
+                'förmiddag_bokade', 'förmiddag_ensam', 'MORNING'
+              )
+              || normalChange(
+                'eftermiddag_bokade', 'eftermiddag_ensam', 'AFTERNOON'
+              )
+            )
+          )
+          || (
+            loggedIn() && cleanup(request.auth.uid)
+            && (
+              removeOwnForDeletion(
+                'förmiddag_bokade', 'förmiddag_ensam'
+              )
+              || removeOwnForDeletion(
+                'eftermiddag_bokade', 'eftermiddag_ensam'
+              )
+            )
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    match /anteckningar/{noteId} {
+      allow read: if loggedIn();
+
+      allow create: if activeSelf()
+        && request.resource.data.keys().hasAll([
+          'datum', 'text', 'författar_id', 'författarnamn',
+          'skapad_tidpunkt', 'admin_anteckning'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'datum', 'text', 'författar_id', 'författarnamn',
+          'skapad_tidpunkt', 'admin_anteckning'
+        ])
+        && request.resource.data.datum is string
+        && validDate(request.resource.data.datum)
+        && request.resource.data.text is string
+        && request.resource.data['författar_id'] == request.auth.uid
+        && request.resource.data['författarnamn'] is string
+        && request.resource.data['skapad_tidpunkt'] == request.time
+        && request.resource.data['admin_anteckning']
+          == (get(profile(request.auth.uid)).data.roll == 1);
+
+      allow update: if activeSelf()
+        && (self(resource.data['författar_id']) || admin())
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['text'])
+        && request.resource.data.text is string;
+
+      allow delete: if (
+        activeSelf()
+        && (self(resource.data['författar_id']) || admin())
+      ) || cleanup(resource.data['författar_id']);
+    }
+
+    match /evenemang/{eventId} {
+      allow read: if loggedIn();
+
+      function validEvent(d) {
+        return d.keys().hasAll([
+          'datum', 'titel', 'beskrivning',
+          'skapad_av', 'starttid', 'sluttid'
+        ])
+        && d.keys().hasOnly([
+          'datum', 'titel', 'beskrivning',
+          'skapad_av', 'starttid', 'sluttid'
+        ])
+        && d.datum is timestamp
+        && d.titel is string
+        && d.beskrivning is string
+        && d['skapad_av'] is string
+        && (d.starttid == null || d.starttid is timestamp)
+        && (d.sluttid == null || d.sluttid is timestamp);
+      }
+
+      allow create: if activeSelf()
+        && validEvent(request.resource.data)
+        && request.resource.data['skapad_av'] == request.auth.uid;
+
+      allow update: if activeSelf()
+        && (self(resource.data['skapad_av']) || admin())
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['titel', 'beskrivning', 'starttid', 'sluttid'])
+        && validEvent(request.resource.data);
+
+      allow delete: if (
+        activeSelf()
+        && (self(resource.data['skapad_av']) || admin())
+      ) || cleanup(resource.data['skapad_av']);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

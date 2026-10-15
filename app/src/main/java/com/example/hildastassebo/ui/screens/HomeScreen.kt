@@ -26,6 +26,8 @@ import com.example.hildastassebo.data.model.CalendarEvent
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.example.hildastassebo.data.repository.ShiftRepository
+import com.google.firebase.auth.FirebaseAuth
 
 // Samma färger som i LoginScreen
 private val Sage = Color(0xFF91B1A3)
@@ -69,17 +71,53 @@ fun HomeScreen(
                 .thenBy { it.time }
         )
 
-    val bookedShifts = remember(today) {
-        listOf(
-            HomeBookedShift(today.plusDays(3), "Förmiddag"),
-            HomeBookedShift(today.plusDays(7), "Eftermiddag"),
-            HomeBookedShift(today.plusDays(12), "Förmiddag")
-        ).sortedBy { it.date }
+    val shiftRepository = remember { ShiftRepository() }
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+
+    var bookedShifts by remember(currentUserId) {
+        mutableStateOf(emptyList<HomeBookedShift>())
+    }
+
+    DisposableEffect(currentUserId) {
+        if (currentUserId.isBlank()) {
+            bookedShifts = emptyList()
+            onDispose { }
+        } else {
+            val listener = shiftRepository.observeBookings(
+                onUpdate = { allBookings ->
+                    bookedShifts = allBookings
+                        .filter {
+                            it.userId == currentUserId &&
+                                    !it.date.isBefore(today)
+                        }
+                        .map { booking ->
+                            HomeBookedShift(
+                                date = booking.date,
+                                period = booking.shiftType.label
+                            )
+                        }
+                        .sortedWith(
+                            compareBy<HomeBookedShift> { it.date }
+                                .thenBy { it.period }
+                        )
+                },
+                onError = { exception ->
+                    android.util.Log.e(
+                        "HomeScreen",
+                        "Kunde inte hämta arbetspass",
+                        exception
+                    )
+                }
+            )
+
+            onDispose {
+                listener.remove()
+            }
+        }
     }
 
     // Hämtar användarens närmast kommande bokade pass.
     // Använder samma bokningslista som popup-fönstret.
-    // När Firebase kopplas in ska bookedShifts innehålla riktiga bokningar.
     val nextShift = bookedShifts.firstOrNull { !it.date.isBefore(today) }
 
     // Skapar texten som ska visas på startsidan.

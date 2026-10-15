@@ -15,13 +15,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
 import com.example.hildastassebo.viewmodel.AdminViewModel
 import com.google.firebase.auth.FirebaseAuth
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import com.example.hildastassebo.data.repository.ShiftRepository
+import com.example.hildastassebo.data.repository.SavedShiftBooking
+import java.time.LocalDate
+import java.time.ZoneId
+
 
 // =====================================
 // FÄRGER
@@ -47,6 +52,30 @@ fun StatisticsScreen(onBack: () -> Unit) {
     // Hämtar den inloggade användarens ID
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
+    // Hämtar bokningar från Firestore i realtid.
+    val shiftRepository = remember { ShiftRepository() }
+
+    var bookings by remember {
+        mutableStateOf<List<SavedShiftBooking>>(emptyList())
+    }
+
+    DisposableEffect(shiftRepository) {
+        val listener = shiftRepository.observeBookings(
+            onUpdate = { bookings = it },
+            onError = { exception ->
+                android.util.Log.e(
+                    "StatisticsScreen",
+                    "Kunde inte hämta bokningar",
+                    exception
+                )
+            }
+        )
+
+        onDispose {
+            listener.remove()
+        }
+    }
+
     // =====================================
     // TILLSTÅND FÖR ANVÄNDARVAL
     // =====================================
@@ -67,6 +96,29 @@ fun StatisticsScreen(onBack: () -> Unit) {
     // Texten som används för att söka användare
     var volunteerSearchQuery by remember {
         mutableStateOf("")
+    }
+
+    // Räknar tidigare bokade arbetspass för vald användare.
+    val today = LocalDate.now(ZoneId.of("Europe/Stockholm"))
+
+    val completedBookings = bookings.filter { booking ->
+        booking.userId == selectedVolunteerId &&
+                booking.date.isBefore(today)
+    }
+
+// Antal pass under de senaste 7 dagarna.
+    val weeklyCount = completedBookings.count {
+        !it.date.isBefore(today.minusDays(7))
+    }
+
+// Antal pass under den senaste månaden.
+    val monthlyCount = completedBookings.count {
+        !it.date.isBefore(today.minusMonths(1))
+    }
+
+// Antal pass under det senaste året.
+    val yearlyCount = completedBookings.count {
+        !it.date.isBefore(today.minusYears(1))
     }
 
     // =====================================
@@ -268,18 +320,15 @@ fun StatisticsScreen(onBack: () -> Unit) {
 
                 // Visar tre statistikrutor:
                 // senaste veckan, månaden och året.
-                //
-                // OBS: Rutorna visar just nu platshållaren "–".
-                // Riktiga arbetspass kopplas in senare.
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     listOf(
-                        "Senaste veckan",
-                        "Senaste månaden",
-                        "Senaste året"
-                    ).forEach { label ->
+                        "Senaste veckan" to weeklyCount,
+                        "Senaste månaden" to monthlyCount,
+                        "Senaste året" to yearlyCount
+                    ).forEach { (label, count) ->
                         // =====================================
                         // ENSKILD STATISTIKRUTA
                         // =====================================
@@ -298,9 +347,8 @@ fun StatisticsScreen(onBack: () -> Unit) {
                         ) {
 
                             // Antal arbetspass
-                            // Ersätts med riktig statistik senare
                             Text(
-                                text = "–",
+                                text = count.toString(),
                                 fontSize = 30.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = DarkSage

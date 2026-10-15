@@ -277,7 +277,9 @@ internal fun CalendarShiftDialogs(
     onShiftToCancelChange: (ShiftKey?) -> Unit,
     bookingToCancel: ShiftBooking?,
     wantsToWorkAlone: Boolean,
-    onWantsToWorkAloneChange: (Boolean) -> Unit
+    onWantsToWorkAloneChange: (Boolean) -> Unit,
+    onBookShift: (ShiftType, Boolean) -> Unit,
+    onCancelShift: () -> Unit
 ) {
 
 
@@ -375,18 +377,10 @@ internal fun CalendarShiftDialogs(
                 TextButton(
                     enabled = !alreadyBooked && !someoneWantsAlone,
                     onClick = {
-                        val key = ShiftKey(selectedDate, chosenType)
-
-                        bookings[key] = currentBookings +
-                                ShiftBooking(
-                                    name = "Jessie",
-                                    isMe = true,
-                                    wantsToWorkAlone =
-                                        wantsToWorkAlone &&
-                                                currentBookings.isEmpty()
-                                )
-
-                        onBookingDialogChange(null)
+                        onBookShift(
+                            chosenType,
+                            wantsToWorkAlone && currentBookings.isEmpty()
+                        )
                     }
                 ) {
                     Text("Bekräfta")
@@ -419,12 +413,7 @@ internal fun CalendarShiftDialogs(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        bookingToCancel?.let { selectedBooking ->
-                            bookings[key] = bookings[key].orEmpty()
-                                .filterNot { it === selectedBooking }
-                        }
-
-                        onShiftToCancelChange(null)
+                        onCancelShift()
                     }
                 ) {
                     Text("Avboka pass", color = MissingRed)

@@ -1,19 +1,15 @@
 package com.example.hildastassebo.ui.screens.calendar
 
-import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.hildastassebo.data.model.*
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.UUID
+import com.example.hildastassebo.data.repository.NoteRepository
 
 private val DarkSage = Color(0xFF47796C)
 private val Muted = Color(0xFF7D8793)
@@ -35,7 +31,9 @@ internal fun CalendarNoteDialogs(
     onNoteToDeleteChange: (CalendarNote?) -> Unit,
     currentUserId: String,
     currentUserName: String,
-    isAdmin: Boolean
+    isAdmin: Boolean,
+    noteRepository: NoteRepository,
+    onNoteError: (Exception) -> Unit
 ) {
 
 
@@ -69,27 +67,29 @@ internal fun CalendarNoteDialogs(
                 TextButton(
                     enabled = noteText.isNotBlank() && currentUserId.isNotEmpty(),
                     onClick = {
-                        val existing = notes[selectedDate].orEmpty()
                         val edit = editingNote
-                        if (edit == null) {
-                            notes[selectedDate] = existing + CalendarNote(
-                                id = UUID.randomUUID().toString(),
-                                text = noteText.trim(),
-                                authorId = currentUserId,
-                                authorName = currentUserName,
-                                createdAt = LocalDateTime.now(),
-                                isAdminNote = isAdmin
-                            )
-                        } else if (edit.authorId == currentUserId || isAdmin) {
-                            // Behåll ursprunglig signatur och tid vid redigering.
-                            notes[selectedDate] = existing.map { note ->
-                                if (note.id == edit.id) note.copy(text = noteText.trim())
-                                else note
-                            }
+
+                        val onSuccess = {
+                            onShowNoteDialogChange(false)
+                            onEditingNoteChange(null)
+                            onNoteTextChange("")
                         }
-                        onShowNoteDialogChange(false)
-                        onEditingNoteChange(null)
-                        onNoteTextChange("")
+
+                        if (edit == null) {
+                            noteRepository.addNote(
+                                date = selectedDate,
+                                text = noteText,
+                                onSuccess = onSuccess,
+                                onError = onNoteError
+                            )
+                        } else {
+                            noteRepository.updateNote(
+                                note = edit,
+                                text = noteText,
+                                onSuccess = onSuccess,
+                                onError = onNoteError
+                            )
+                        }
                     }
                 ) {
                     Text("Spara")
@@ -113,11 +113,13 @@ internal fun CalendarNoteDialogs(
             text = { Text("Vill du verkligen ta bort den här anteckningen?") },
             confirmButton = {
                 TextButton(onClick = {
-                    if (note.authorId == currentUserId || isAdmin) {
-                        notes[selectedDate] = notes[selectedDate].orEmpty()
-                            .filterNot { it.id == note.id }
-                    }
-                    onNoteToDeleteChange(null)
+                    noteRepository.deleteNote(
+                        note = note,
+                        onSuccess = {
+                            onNoteToDeleteChange(null)
+                        },
+                        onError = onNoteError
+                    )
                 }) {
                     Text("Ta bort", color = MissingRed)
                 }
