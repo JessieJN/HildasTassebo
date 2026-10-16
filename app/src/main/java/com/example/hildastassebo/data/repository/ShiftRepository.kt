@@ -107,6 +107,16 @@ class ShiftRepository {
             onError(e)
             return
         }
+        val today = LocalDate.now(ZoneId.of("Europe/Stockholm"))
+
+        if (date.isBefore(today)) {
+            onError(
+                IllegalStateException(
+                    "Du kan inte boka arbetspass på datum som redan har passerat."
+                )
+            )
+            return
+        }
 
         val dateId = date.toString()
         val dayRef = db.collection("arbetspass").document(dateId)

@@ -26,7 +26,8 @@ import com.example.hildastassebo.data.repository.ShiftRepository
 import com.example.hildastassebo.data.repository.SavedShiftBooking
 import java.time.LocalDate
 import java.time.ZoneId
-
+import java.time.DayOfWeek
+import java.time.temporal.TemporalAdjusters
 
 // =====================================
 // FÄRGER
@@ -101,24 +102,30 @@ fun StatisticsScreen(onBack: () -> Unit) {
     // Räknar tidigare bokade arbetspass för vald användare.
     val today = LocalDate.now(ZoneId.of("Europe/Stockholm"))
 
-    val completedBookings = bookings.filter { booking ->
-        booking.userId == selectedVolunteerId &&
-                booking.date.isBefore(today)
+    val selectedBookings = bookings.filter { booking ->
+        booking.userId == selectedVolunteerId
+    }
+// Aktuell kalendervecka: måndag till söndag
+    val startOfWeek = today.with(
+        TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)
+    )
+
+    val endOfWeek = startOfWeek.plusDays(6)
+
+    val weeklyCount = selectedBookings.count {
+        !it.date.isBefore(startOfWeek) &&
+                !it.date.isAfter(endOfWeek)
     }
 
-// Antal pass under de senaste 7 dagarna.
-    val weeklyCount = completedBookings.count {
-        !it.date.isBefore(today.minusDays(7))
+// Aktuell kalendermånad
+    val monthlyCount = selectedBookings.count {
+        it.date.year == today.year &&
+                it.date.month == today.month
     }
 
-// Antal pass under den senaste månaden.
-    val monthlyCount = completedBookings.count {
-        !it.date.isBefore(today.minusMonths(1))
-    }
-
-// Antal pass under det senaste året.
-    val yearlyCount = completedBookings.count {
-        !it.date.isBefore(today.minusYears(1))
+// Aktuellt kalenderår
+    val yearlyCount = selectedBookings.count {
+        it.date.year == today.year
     }
 
     // =====================================
@@ -187,7 +194,7 @@ fun StatisticsScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Översikt över genomförda arbetspass",
+            text = "Översikt över bokade arbetspass",
             fontSize = 14.sp,
             color = Muted
         )
@@ -212,7 +219,7 @@ fun StatisticsScreen(onBack: () -> Unit) {
                 // RUBRIK FÖR ARBETSPASS
                 // =====================================
                 Text(
-                    text = "Genomförda arbetspass",
+                    text = "Bokade arbetspass",
                     fontSize = 19.sp,
                     fontWeight = FontWeight.Bold,
                     color = Ink
@@ -319,15 +326,15 @@ fun StatisticsScreen(onBack: () -> Unit) {
                 // =====================================
 
                 // Visar tre statistikrutor:
-                // senaste veckan, månaden och året.
+                // veckan, månaden och året.
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     listOf(
-                        "Senaste veckan" to weeklyCount,
-                        "Senaste månaden" to monthlyCount,
-                        "Senaste året" to yearlyCount
+                        "Denna vecka" to weeklyCount,
+                        "Denna månad" to monthlyCount,
+                        "Detta år" to yearlyCount
                     ).forEach { (label, count) ->
                         // =====================================
                         // ENSKILD STATISTIKRUTA
