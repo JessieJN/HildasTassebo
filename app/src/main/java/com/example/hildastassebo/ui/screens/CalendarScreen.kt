@@ -95,6 +95,9 @@ fun CalendarScreen(
     val today = remember { LocalDate.now() }
 
     var selectedDate by remember { mutableStateOf(today) }
+    val isPastDate = selectedDate.isBefore(
+        LocalDate.now(java.time.ZoneId.of("Europe/Stockholm"))
+    )
     var mode by remember { mutableStateOf(CalendarMode.WEEK) }
     var listFilter by remember { mutableStateOf(ShiftListFilter.ALL) }
     var bookingDialog by remember { mutableStateOf<ShiftType?>(null) }
@@ -530,6 +533,7 @@ fun CalendarScreen(
                                     }
                                 )
                             },
+                            enabled = !isPastDate,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp)
                         ) {
@@ -547,18 +551,20 @@ fun CalendarScreen(
                 // ----------------------------------------------------
                 item {
                     Button(
-                        onClick = {
-                            wantsToWorkAlone = false
-                            bookingDialog = ShiftType.MORNING
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkSage
-                        )
-                    ) {
+
+                            onClick = {
+                                wantsToWorkAlone = false
+                                bookingDialog = ShiftType.MORNING
+                            },
+                            enabled = !isPastDate,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = DarkSage
+                            )
+                        ) {
                         Icon(
                             Icons.Outlined.EventAvailable,
                             contentDescription = null

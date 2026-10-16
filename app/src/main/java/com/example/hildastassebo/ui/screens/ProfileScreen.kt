@@ -30,6 +30,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.example.hildastassebo.data.repository.ShiftRepository
 import com.example.hildastassebo.data.repository.SavedShiftBooking
 import java.time.LocalDate
+import java.time.ZoneId
+import java.time.DayOfWeek
+import java.time.temporal.TemporalAdjusters
 
 private val DarkSage = Color(0xFF47796C)
 private val PaleSage = Color(0xFFE7F0EB)
@@ -86,24 +89,29 @@ fun ProfileScreen(
         }
     }
 
-    val today = LocalDate.now()
+    val today = LocalDate.now(ZoneId.of("Europe/Stockholm"))
 
-// Räknar bokade arbetspass som redan har ägt rum,
-// inklusive dagens datum.
-    val completedBookings = myBookings.filter {
-        !it.date.isAfter(today)
+// Aktuell kalendervecka: måndag till söndag
+    val startOfWeek = today.with(
+        TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)
+    )
+
+    val endOfWeek = startOfWeek.plusDays(6)
+
+    val shiftsThisWeek = myBookings.count {
+        !it.date.isBefore(startOfWeek) &&
+                !it.date.isAfter(endOfWeek)
     }
 
-    val shiftsLastWeek = completedBookings.count {
-        !it.date.isBefore(today.minusDays(6))
+// Aktuell kalendermånad
+    val shiftsThisMonth = myBookings.count {
+        it.date.year == today.year &&
+                it.date.month == today.month
     }
 
-    val shiftsLastMonth = completedBookings.count {
-        !it.date.isBefore(today.minusMonths(1))
-    }
-
-    val shiftsLastYear = completedBookings.count {
-        !it.date.isBefore(today.minusYears(1))
+// Aktuellt kalenderår
+    val shiftsThisYear = myBookings.count {
+        it.date.year == today.year
     }
 
     // Dialog för att bekräfta utloggning
@@ -226,20 +234,20 @@ fun ProfileScreen(
                 ) {
 
                     ShiftStatCard(
-                        label = "Senaste veckan",
-                        count = shiftsLastWeek,
+                        label = "Denna vecka",
+                        count = shiftsThisWeek,
                         modifier = Modifier.weight(1f)
                     )
 
                     ShiftStatCard(
-                        label = "Senaste månaden",
-                        count = shiftsLastMonth,
+                        label = "Denna månad",
+                        count = shiftsThisMonth,
                         modifier = Modifier.weight(1f)
                     )
 
                     ShiftStatCard(
-                        label = "Senaste året",
-                        count = shiftsLastYear,
+                        label = "Detta år",
+                        count = shiftsThisYear,
                         modifier = Modifier.weight(1f)
                     )
                 }
