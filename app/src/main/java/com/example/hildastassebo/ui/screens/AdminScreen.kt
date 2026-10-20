@@ -33,6 +33,15 @@ import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import com.example.hildastassebo.data.repository.ShiftRepository
+import com.example.hildastassebo.data.repository.SavedShiftBooking
+import androidx.compose.runtime.DisposableEffect
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.DayOfWeek
+import java.time.temporal.TemporalAdjusters
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 
 // =====================================
 // FÄRGER OCH DESIGN
@@ -51,7 +60,6 @@ private val FieldBorder = Color(0xFFD7E2DC)
     fun AdminScreen(
         onLogout: () -> Unit,
         onSettingsClick: () -> Unit,
-        onStatisticsClick: () -> Unit,
         adminViewModel: AdminViewModel = viewModel()
     ){
     // =====================================
@@ -101,6 +109,90 @@ private val FieldBorder = Color(0xFFD7E2DC)
     // INLOGGAD ADMINISTRATÖR
     // =====================================
     val currentUser = FirebaseAuth.getInstance().currentUser
+
+    // =====================================
+    // BOKNINGAR FRÅN FIRESTORE
+    // =====================================
+
+    // Repository för arbetspass och bokningar
+        val shiftRepository = remember { ShiftRepository() }
+
+    // Lista över alla bokningar
+        var bookings by remember {
+            mutableStateOf<List<SavedShiftBooking>>(emptyList())
+        }
+
+    // Lyssnar på bokningar i realtid
+        DisposableEffect(shiftRepository) {
+            val listener = shiftRepository.observeBookings(
+                onUpdate = { bookings = it },
+                onError = { exception ->
+                    android.util.Log.e(
+                        "AdminScreen",
+                        "Kunde inte hämta bokningar",
+                        exception
+                    )
+                }
+            )
+
+            onDispose {
+                listener.remove()
+            }
+        }
+    // =====================================
+    // STATISTIK FÖR BOKADE ARBETSPASS
+    // =====================================
+
+    // Inloggad administratör visas som standard
+        var statisticsUserId by remember {
+            mutableStateOf(currentUser?.uid)
+        }
+
+    // Namnet i statistikens dropdown
+        var statisticsUserName by remember {
+            mutableStateOf("Mina arbetspass")
+        }
+
+    // Styr dropdown-menyn
+        var statisticsMenuExpanded by remember {
+            mutableStateOf(false)
+        }
+
+    // Sökning efter volontärer
+        var statisticsSearchQuery by remember {
+            mutableStateOf("")
+        }
+
+    // Alla bokningar för vald användare
+        val selectedBookings = bookings.filter {
+            it.userId == statisticsUserId
+        }
+
+    // Dagens datum enligt svensk tid
+        val today = LocalDate.now(ZoneId.of("Europe/Stockholm"))
+
+    // Aktuell vecka: måndag till söndag
+        val startOfWeek = today.with(
+            TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)
+        )
+
+        val endOfWeek = startOfWeek.plusDays(6)
+
+        val weeklyCount = selectedBookings.count {
+            !it.date.isBefore(startOfWeek) &&
+                    !it.date.isAfter(endOfWeek)
+        }
+
+    // Aktuell kalendermånad
+        val monthlyCount = selectedBookings.count {
+            it.date.year == today.year &&
+                    it.date.month == today.month
+        }
+
+    // Aktuellt kalenderår
+        val yearlyCount = selectedBookings.count {
+            it.date.year == today.year
+        }
 
     val adminName = currentUser?.displayName
         ?.takeIf { it.isNotBlank() }
@@ -165,6 +257,147 @@ private val FieldBorder = Color(0xFFD7E2DC)
                 color = MaterialTheme.colorScheme.error
             )
         }
+        // =====================================
+        // STATISTIK ÖVER BOKADE ARBETSPASS
+        // =====================================
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    ),
+                    border = BorderStroke(1.dp, FieldBorder)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp)
+                    ) {
+                        Text(
+                            text = "Bokade arbetspass",
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Ink
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+
+                        // Välj vems statistik som ska visas
+                        Box {
+                            OutlinedButton(
+                                onClick = { statisticsMenuExpanded = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(statisticsUserName)
+                            }
+
+                            DropdownMenu(
+                                expanded = statisticsMenuExpanded,
+                                onDismissRequest = {
+                                    statisticsMenuExpanded = false
+                                    statisticsSearchQuery = ""
+                                },
+                                modifier = Modifier.heightIn(max = 350.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = statisticsSearchQuery,
+                                    onValueChange = { statisticsSearchQuery = it },
+                                    label = { Text("Sök användare") },
+                                    placeholder = { Text("Namn eller e-post") },
+                                    singleLine = true,
+                                    modifier = Modifier
+                                        .width(280.dp)
+                                        .padding(
+                                            horizontal = 8.dp,
+                                            vertical = 4.dp
+                                        )
+                                )
+
+                                HorizontalDivider()
+
+                                DropdownMenuItem(
+                                    text = { Text("Mina arbetspass") },
+                                    onClick = {
+                                        statisticsUserId = currentUser?.uid
+                                        statisticsUserName = "Mina arbetspass"
+                                        statisticsMenuExpanded = false
+                                        statisticsSearchQuery = ""
+                                    }
+                                )
+
+                                volunteers
+                                    .filter { volunteer ->
+                                        volunteer.id != currentUser?.uid &&
+                                                (
+                                                        volunteer.fullName.contains(
+                                                            statisticsSearchQuery,
+                                                            ignoreCase = true
+                                                        ) ||
+                                                                volunteer.email.contains(
+                                                                    statisticsSearchQuery,
+                                                                    ignoreCase = true
+                                                                )
+                                                        )
+                                    }
+                                    .sortedBy { it.fullName.lowercase() }
+                                    .forEach { volunteer ->
+                                        DropdownMenuItem(
+                                            text = { Text(volunteer.fullName) },
+                                            onClick = {
+                                                statisticsUserId = volunteer.id
+                                                statisticsUserName = volunteer.fullName
+                                                statisticsMenuExpanded = false
+                                                statisticsSearchQuery = ""
+                                            }
+                                        )
+                                    }
+                            }
+                        }
+
+                        Spacer(Modifier.height(20.dp))
+
+                        // Statistik för aktuell vecka, månad och år
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(
+                                "Denna vecka" to weeklyCount,
+                                "Denna månad" to monthlyCount,
+                                "Detta år" to yearlyCount
+                            ).forEach { (label, count) ->
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(
+                                            PaleSage,
+                                            RoundedCornerShape(14.dp)
+                                        )
+                                        .padding(
+                                            horizontal = 4.dp,
+                                            vertical = 16.dp
+                                        ),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = count.toString(),
+                                        fontSize = 30.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = DarkSage
+                                    )
+
+                                    Spacer(Modifier.height(8.dp))
+
+                                    Text(
+                                        text = label,
+                                        fontSize = 11.sp,
+                                        lineHeight = 15.sp,
+                                        color = DarkSage,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
         // =====================================
         // VÄLJ ANVÄNDARE – DROPDOWN OCH SÖKNING
         // =====================================
@@ -251,55 +484,6 @@ private val FieldBorder = Color(0xFFD7E2DC)
             }
         }
         // =====================================
-        // TOMT LÄGE – INGEN ANVÄNDARE VALD
-        // =====================================
-        if (selectedVolunteerId == null) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                border = BorderStroke(1.dp, FieldBorder)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .background(PaleSage, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.PersonOutline,
-                            contentDescription = null,
-                            tint = DarkSage,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
-
-                    Text(
-                        text = "Välj en användare",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Ink
-                    )
-
-                    Text(
-                        text = "Välj en volontär eller administratör i listan ovan för att se och redigera deras uppgifter.",
-                        fontSize = 14.sp,
-                        color = Muted,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        }
-        // =====================================
         // VALD ANVÄNDARE – UPPGIFTER OCH REDIGERINGSKNAPP
         // =====================================
         LazyColumn(
@@ -332,20 +516,45 @@ private val FieldBorder = Color(0xFFD7E2DC)
                         modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(
-                            text = volunteer.fullName,
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = volunteer.fullName,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
 
-                        Text(
-                            text = volunteer.email,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                                Text(
+                                    text = volunteer.email,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
 
-                        Text(
-                            text = if (volunteer.role == 1L) "Admin" else "Volontär",
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                                Text(
+                                    text = if (volunteer.role == 1L) "Admin" else "Volontär",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+
+                            Icon(
+                                imageVector = if (selectedUserId == volunteer.id) {
+                                    Icons.Filled.KeyboardArrowUp
+                                } else {
+                                    Icons.Filled.KeyboardArrowDown
+                                },
+                                contentDescription = if (selectedUserId == volunteer.id) {
+                                    "Dölj användaruppgifter"
+                                } else {
+                                    "Visa användaruppgifter"
+                                },
+                                tint = DarkSage
+                            )
+                        }
 
                         if (selectedUserId == volunteer.id) {
                             HorizontalDivider()
@@ -380,19 +589,7 @@ private val FieldBorder = Color(0xFFD7E2DC)
                 }
             }
         }
-        // =====================================
-        // NAVIGERING TILL STATISTIK
-        // =====================================
-        OutlinedButton(
-            onClick = onStatisticsClick,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp)
-        ) {
-            Text(
-                text = "Visa statistik över arbetspass",
-                color = DarkSage
-            )
-        }
+
         // =====================================
         // INSTÄLLNINGAR OCH LOGGA UT
         // =====================================
