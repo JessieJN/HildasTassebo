@@ -277,8 +277,15 @@ private val FieldBorder = Color(0xFFD7E2DC)
                             fontWeight = FontWeight.Bold,
                             color = Ink
                         )
+                        Spacer(Modifier.height(6.dp))
 
-                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = "Översikt över dina och volontärernas arbetspass",
+                            fontSize = 13.sp,
+                            color = Muted
+                        )
+
+                        Spacer(Modifier.height(20.dp))
 
                         // Välj vems statistik som ska visas
                         Box {
@@ -287,6 +294,14 @@ private val FieldBorder = Color(0xFFD7E2DC)
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(statisticsUserName)
+
+                                Spacer(Modifier.width(8.dp))
+
+                                Icon(
+                                    imageVector = Icons.Filled.KeyboardArrowDown,
+                                    contentDescription = "Välj användare",
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
 
                             DropdownMenu(
@@ -434,6 +449,13 @@ private val FieldBorder = Color(0xFFD7E2DC)
                             text = volunteers
                                 .find { it.id == selectedVolunteerId }
                                 ?.fullName ?: "Välj användare"
+                        )
+                        Spacer(Modifier.width(8.dp))
+
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = "Välj användare",
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
