@@ -1,0 +1,102 @@
+INTEGRITETSPOLICY – HILDAS TASSEBO
+
+Senast uppdaterad: 2026-10-22
+
+1. OM INTEGRITETSPOLICYN
+Hildas Tassebo värnar om din personliga integritet. Denna integritetspolicy beskriver hur dina personuppgifter samlas in, används, lagras och raderas när du använder Hildas Tassebos app för schemaläggning och samordning av volontärarbete.
+
+2. PERSONUPPGIFTSANSVARIG
+Hildas Tassebo är personuppgiftsansvarig för behandlingen av personuppgifter i appen.
+
+Organisation: Hildas Tassebo
+Organisationsnummer: 802473-8646
+E-postadress: info@hildastassebo.se
+
+3. VILKA PERSONUPPGIFTER LAGRAS?
+Appen behandlar följande personuppgifter:
+
+- Förnamn och efternamn.
+- E-postadress.
+- Användar-ID.
+- Användarroll (volontär eller administratör).
+- Bokade och genomförda arbetspass.
+- Bokningsuppgifter, inklusive önskemål om att arbeta ensam.
+- Anteckningar som användare skapar.
+- Uppgifter som lämnas vid kontakt med teknisk support.
+
+Appen kan även behandla tekniska uppgifter som behövs för inloggning och säkerhet.
+
+4. VARFÖR BEHANDLAS PERSONUPPGIFTER?
+Personuppgifterna används för att:
+
+- Skapa och administrera användarkonton.
+- Visa och hantera arbetsscheman.
+- Boka och avboka arbetspass.
+- Visa vilka volontärer som arbetar.
+- Hantera evenemang och anteckningar.
+- Visa statistik över genomförda arbetspass under de senaste 12 månaderna.
+- Tillhandahålla teknisk support.
+- Skydda appen mot obehörig åtkomst.
+
+Rättslig grund:
+Hildas Tassebo behandlar personuppgifter som behövs för schemaläggning och samordning av verksamheten med stöd av berättigat intresse enligt artikel 6.1 f i dataskyddsförordningen (GDPR).
+Föreningens berättigade intresse är att kunna planera arbetspass, samordna bemanningen och ge anställda och volontärer tillgång till ett gemensamt och uppdaterat schema.
+Behandlingen begränsas till de personuppgifter som behövs för dessa ändamål.
+
+5. HUR LAGRAS PERSONUPPGIFTER?
+Hildas Tassebo använder Google Firebase för att lagra och hantera personuppgifter.
+Cloud Firestore används för att lagra uppgifter om användare, arbetspass, bokningar, evenemang och anteckningar. Databasen är placerad i Finland (europe-north1).
+Firebase Authentication används för registrering och inloggning med e-postadress och lösenord. Denna tjänst behandlar även personuppgifter i USA.
+Endast behöriga användare får tillgång till personuppgifter utifrån sina roller och behov.
+Volontärer kan se information som behövs för schemaläggningen, exempelvis vilka personer som är bokade på ett arbetspass.
+Behöriga administratörer och utvecklare kan få tillgång till uppgifter när det behövs för administration, underhåll och teknisk support.
+Google tillhandahåller databehandlingsvillkor som bland annat reglerar säkerhet och internationella överföringar av personuppgifter. Information om tillämpliga skyddsåtgärder finns i Googles villkor:
+
+https://cloud.google.com/terms/data-processing-addendum
+
+
+6. HUR LÄNGE SPARAS UPPGIFTERNA?
+Användarkonton och tillhörande grunduppgifter sparas så länge användaren är aktiv hos Hildas Tassebo och kontot behövs.
+Arbetspass, bokningar, evenemang och anteckningar raderas när de är äldre än 12 månader, räknat från det datum som uppgifterna avser.
+Uppgifter kan i undantagsfall behöva sparas längre om det finns lagliga skäl.
+Supportmeddelanden sparas endast så länge de behövs för att hantera ärendet, enligt fastställda raderingsrutiner.
+
+7. RADERING AV KONTO
+Du kan själv radera ditt konto via appens kontoinställningar.
+När du raderar ditt konto tas kontot och tillhörande personuppgifter bort från appens aktiva system enligt våra raderingsrutiner, förutom uppgifter som måste eller får behållas enligt lag.
+Om du avslutar ditt uppdrag hos Hildas Tassebo utan att själv radera kontot kan föreningen begära att utvecklarna inaktiverar eller raderar det manuellt.
+
+8. VEM KAN TA DEL AV PERSONUPPGIFTERNA?
+Personuppgifter kan vara tillgängliga för:
+
+- Behöriga administratörer hos Hildas Tassebo.
+- Andra volontärer i den omfattning som behövs för schemaläggningen.
+- Appens utvecklare för drift, underhåll och support.
+- Google som leverantör av Firebase.
+
+Personuppgifterna används inte för orelaterade ändamål.
+
+9. DINA RÄTTIGHETER
+Du har enligt GDPR, under de förutsättningar som gäller för respektive rättighet, rätt att:
+
+- Få information om hur dina personuppgifter behandlas.
+- Begära tillgång till dina personuppgifter.
+- Begära rättelse av felaktiga uppgifter.
+- Begära radering av dina personuppgifter.
+- Begära begränsning av behandlingen.
+- Invända mot viss behandling.
+- I vissa fall få ut dina uppgifter för överföring till en annan tjänst.
+
+Om behandlingen grundas på samtycke har du rätt att återkalla det.
+Du kan kontakta Hildas Tassebo om du vill använda någon av dina rättigheter.
+Du har också rätt att lämna klagomål till Integritetsskyddsmyndigheten (IMY): www.imy.se.
+
+10. TEKNISK SUPPORT
+Om du upplever problem med appen kan du kontakta utvecklarna via kontaktformuläret under fliken "Om".
+Meddelandet skickas till utvecklarnas e-postadress och används för att hantera ditt ärende.
+Undvik att lämna känsliga personuppgifter i kontaktformuläret.
+För frågor om dina personuppgifter eller dina rättigheter enligt GDPR kontaktar du Hildas Tassebo.
+
+11. ÄNDRINGAR I INTEGRITETSPOLICYN
+Hildas Tassebo kan uppdatera integritetspolicyn om appens funktioner eller behandlingen av personuppgifter förändras.
+Den senaste versionen finns tillgänglig i appen. Vid väsentliga ändringar informeras användarna på lämpligt sätt.

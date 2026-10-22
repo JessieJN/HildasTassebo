@@ -78,6 +78,7 @@ internal fun CalendarEventDialogs(
             onDismissRequest = {
                 if (!isSaving) onShowEventDialogChange(false)
             },
+            containerColor = Color.White,
             title = {
                 Text(
                     if (editingEvent == null) {
@@ -275,13 +276,19 @@ internal fun CalendarEventDialogs(
                 onDismissRequest = {
                     selectingStartTime = null
                 },
+                containerColor = Color.White,
                 title = {
                     Text(
                         if (isStart) "Välj starttid" else "Välj sluttid"
                     )
                 },
                 text = {
-                    TimePicker(state = pickerState)
+                    TimePicker(
+                        state = pickerState,
+                        colors = TimePickerDefaults.colors(
+                            clockDialColor = Color.White
+                        )
+                    )
                 },
                 confirmButton = {
                     TextButton(
@@ -330,6 +337,7 @@ internal fun CalendarEventDialogs(
             onDismissRequest = {
                 if (!isDeleting) onEventToDeleteChange(null)
             },
+            containerColor = Color.White,
             title = {
                 Text("Ta bort evenemang?")
             },

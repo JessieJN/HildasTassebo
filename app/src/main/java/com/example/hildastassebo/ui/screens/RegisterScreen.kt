@@ -25,6 +25,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
 
+import androidx.compose.ui.platform.LocalContext
+
+
+
 private val Sage = Color(0xFF91B1A3)
 private val DarkSage = Color(0xFF47796C)
 private val Background = Color(0xFFFAFAF7)
@@ -44,6 +48,11 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
 
+    var acceptedTerms by remember { mutableStateOf(false) }
+    var openPolicy by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+
+
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
@@ -51,6 +60,55 @@ fun RegisterScreen(
 
     val auth = remember { FirebaseAuth.getInstance() }
     val db = remember { FirebaseFirestore.getInstance() }
+
+
+    if (openPolicy != null) {
+        val fileName = openPolicy!!
+
+        val policyText = remember(fileName) {
+            try {
+                context.assets.open(fileName)
+                    .bufferedReader()
+                    .use { it.readText() }
+            } catch (e: Exception) {
+                "Dokumentet kunde inte öppnas."
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = { openPolicy = null },
+            containerColor = Color.White,
+            title = {
+                Text(
+                    if (fileName == "terms_of_use.txt")
+                        "Användarvillkor"
+                    else
+                        "Integritetspolicy"
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 450.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = policyText,
+                        fontSize = 14.sp,
+                        lineHeight = 21.sp
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { openPolicy = null }
+                ) {
+                    Text("Stäng", color = DarkSage)
+                }
+            }
+        )
+    }
+
 
     Column(
         modifier = Modifier
@@ -201,6 +259,63 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+
+            Spacer(Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = acceptedTerms,
+                    onCheckedChange = { acceptedTerms = it },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = DarkSage
+                    )
+                )
+
+                Text(
+                    text = "Jag godkänner användarvillkoren och har tagit del av integritetspolicyn.",
+                    fontSize = 13.sp,
+                    color = Ink,
+                    modifier = Modifier.clickable {
+                        acceptedTerms = !acceptedTerms
+                    }
+                )
+            }
+
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Användarvillkor",
+                    color = DarkSage,
+                    fontSize = 13.sp,
+                    modifier = Modifier.clickable {
+                        openPolicy = "terms_of_use.txt"
+                    }
+                )
+
+                Text(
+                    text = "  •  ",
+                    color = Muted,
+                    fontSize = 13.sp
+                )
+
+                Text(
+                    text = "Integritetspolicy",
+                    color = DarkSage,
+                    fontSize = 13.sp,
+                    modifier = Modifier.clickable {
+                        openPolicy = "privacy_policy.txt"
+                    }
+                )
+            }
+
+
             if (error.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
 
@@ -311,7 +426,7 @@ fun RegisterScreen(
                         }
                     }
                 },
-                enabled = !loading,
+                enabled = !loading && acceptedTerms,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(58.dp),

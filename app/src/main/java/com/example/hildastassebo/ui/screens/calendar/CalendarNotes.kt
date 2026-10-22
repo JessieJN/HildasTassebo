@@ -43,6 +43,7 @@ internal fun CalendarNoteDialogs(
     if (showNoteDialog) {
         AlertDialog(
             onDismissRequest = { onShowNoteDialogChange(false) },
+            containerColor = Color.White,
             title = {
                 Text(if (editingNote == null) "Lägg till anteckning" else "Redigera anteckning")
             },
@@ -109,6 +110,7 @@ internal fun CalendarNoteDialogs(
     noteToDelete?.let { note ->
         AlertDialog(
             onDismissRequest = { onNoteToDeleteChange(null) },
+            containerColor = Color.White,
             title = { Text("Ta bort anteckning?") },
             text = { Text("Vill du verkligen ta bort den här anteckningen?") },
             confirmButton = {

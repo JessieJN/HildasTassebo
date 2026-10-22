@@ -861,6 +861,7 @@ fun CalendarScreen(
     if (adminVolunteerError != null) {
         AlertDialog(
             onDismissRequest = { adminVolunteerError = null },
+            containerColor = Color.White,
             title = { Text("Något gick fel") },
             text = { Text(adminVolunteerError.orEmpty()) },
             confirmButton = {
