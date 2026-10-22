@@ -38,6 +38,7 @@ fun AdminVolunteerPickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
 
+        containerColor = Color.White,
         title = {
             Text(
                 text = "Lägg till volontär",

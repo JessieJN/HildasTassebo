@@ -1,0 +1,42 @@
+ANVÄNDARVILLKOR – HILDAS TASSEBO
+
+Senast uppdaterad: 2026-10-22
+
+1. OM APPEN
+Hildas Tassebos app är avsedd för anställda och ideella volontärer som deltar i föreningens verksamhet.
+Appens syfte är att underlätta schemaläggning, bokning av arbetspass, kommunikation och samordning inom verksamheten.
+Genom att skapa ett konto och godkänna dessa användarvillkor accepterar du reglerna för hur appen får användas.
+
+2. ANVÄNDARKONTO
+Du ansvarar för att de uppgifter du anger vid registreringen är korrekta.
+Ditt konto är personligt och får inte delas med andra. Du ansvarar för att skydda ditt lösenord och för att inte ge obehöriga tillgång till ditt konto.
+Om du misstänker att någon annan har fått tillgång till ditt konto ska du kontakta Hildas Tassebo eller appens tekniska support.
+
+3. BOKNING OCH AVBOKNING AV ARBETSPASS
+Du kan använda appen för att se schemat samt boka och hantera dina arbetspass.
+Bokade arbetspass ska hanteras ansvarsfullt. Om du inte längre kan arbeta ett bokat pass ska du meddela verksamheten så snart som möjligt.
+Avbokning och ändring av arbetspass kan normalt göras direkt i appen fram till sju dagar före arbetspassets datum.
+När mindre än sju dagar återstår behöver du kontakta en administratör för att ändra eller avboka passet.
+Administratörer kan vid behov göra ändringar i schemat.
+
+4. ANTECKNINGAR OCH EVENEMANG
+Appen kan användas för att skapa och läsa anteckningar samt information om evenemang som rör verksamheten.
+Information som registreras i appen ska vara relevant för Hildas Tassebos verksamhet.
+Du får inte använda anteckningar eller andra textfält för kränkande innehåll, obehörig spridning av personuppgifter eller information som inte hör till verksamheten.
+Undvik att skriva känsliga personuppgifter i appens anteckningar.
+
+5. INAKTIVA KONTON OCH AVSLUT AV ANVÄNDNING
+Om du inte längre är aktiv hos Hildas Tassebo ska du meddela föreningen.
+Du kan själv radera ditt konto genom appens kontoinställningar.
+Hildas Tassebo kan begära att konton som inte längre behövs för verksamheten inaktiveras eller raderas.
+Hur personuppgifter hanteras och raderas beskrivs närmare i appens integritetspolicy.
+
+6. DRIFT OCH TEKNISK SUPPORT
+Appen utvecklas och underhålls ideellt av dess utvecklare.
+Utvecklarna arbetar med att hålla appen fungerande och säker, men det kan förekomma tekniska fel, avbrott och förseningar innan problem kan åtgärdas.
+Vid tekniska problem kan du kontakta utvecklarna via supportfunktionen under fliken "Om".
+Vid frågor om arbetspass, bokningar eller verksamhetens rutiner ska du kontakta Hildas Tassebo.
+
+7. ÄNDRINGAR AV ANVÄNDARVILLKOREN
+Användarvillkoren kan uppdateras om appens funktioner eller verksamhetens rutiner förändras.
+Den senaste versionen finns tillgänglig i appen. Vid väsentliga ändringar informeras användarna på lämpligt sätt.

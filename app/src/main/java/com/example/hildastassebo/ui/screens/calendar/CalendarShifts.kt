@@ -300,6 +300,7 @@ internal fun CalendarShiftDialogs(
 
         AlertDialog(
             onDismissRequest = { onBookingDialogChange(null) },
+            containerColor = Color.White,
             title = { Text("Boka arbetspass") },
             text = {
                 Column(
@@ -399,6 +400,7 @@ internal fun CalendarShiftDialogs(
     shiftToCancel?.let { key ->
         AlertDialog(
             onDismissRequest = { onShiftToCancelChange(null) },
+            containerColor = Color.White,
             title = { Text("Avboka arbetspass?") },
             text = {
                 Text(

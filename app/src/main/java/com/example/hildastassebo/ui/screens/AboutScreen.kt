@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 
 // Färger som matchar resten av appen
 private val Sage = Color(0xFF91B1A3)
@@ -31,6 +32,55 @@ private val FieldBorder = Color(0xFFD7E2DC)
 
 @Composable
 fun AboutScreen() {
+    var openPolicy by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+
+//Pop-up ruta som visar txt filerna privacy_policy & terms_of_use
+    if (openPolicy != null) {
+        val fileName = openPolicy!!
+
+        val policyText = remember(fileName) {
+            try {
+                context.assets.open(fileName)
+                    .bufferedReader()
+                    .use { it.readText() }
+            } catch (e: Exception) {
+                "Dokumentet kunde inte öppnas."
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = { openPolicy = null },
+            containerColor = Color.White,
+            title = {
+                Text(
+                    if (fileName == "terms_of_use.txt")
+                        "Användarvillkor"
+                    else
+                        "Integritetspolicy"
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 450.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = policyText,
+                        fontSize = 14.sp,
+                        lineHeight = 21.sp
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { openPolicy = null }) {
+                    Text("Stäng", color = DarkSage)
+                }
+            }
+        )
+    }
+
 
     Column(
         modifier = Modifier
@@ -288,6 +338,36 @@ fun AboutScreen() {
             color = Muted,
             textAlign = TextAlign.Center
         )
+
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = { openPolicy = "privacy_policy.txt" }) {
+                Text(
+                    text = "Integritetspolicy",
+                    color = DarkSage,
+                    fontSize = 12.sp
+                )
+            }
+
+            Text(
+                text = "•",
+                color = Muted,
+                fontSize = 12.sp
+            )
+
+            TextButton(onClick = { openPolicy = "terms_of_use.txt" }) {
+                Text(
+                    text = "Användarvillkor",
+                    color = DarkSage,
+                    fontSize = 12.sp
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
     }
