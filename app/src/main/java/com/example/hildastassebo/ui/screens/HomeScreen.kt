@@ -60,6 +60,10 @@ fun HomeScreen(
     var showMyShiftsDialog by remember {
         mutableStateOf(false)
     }
+    // Styr popupen för kommande evenemang.
+    var showEventAttendanceDialog by remember {
+        mutableStateOf(false)
+    }
 
     // Styr dialogen för nya informationsmeddelanden.
     var showAddAnnouncementDialog by remember {
@@ -368,7 +372,12 @@ fun HomeScreen(
                             } else {
                                 ""
                             }
-                } ?: "Inga kommande evenemang"
+                } ?: "Inga kommande evenemang",
+                onClick = {
+                    if (nextEvent != null) {
+                        showEventAttendanceDialog = true
+                    }
+                }
             )
 
             // Information från Firebase.
@@ -565,6 +574,15 @@ fun HomeScreen(
             shifts = bookedShifts,
             onDismiss = {
                 showMyShiftsDialog = false
+            }
+        )
+    }
+    // Popup för närmast kommande evenemang.
+    if (showEventAttendanceDialog && nextEvent != null) {
+        EventAttendanceDialog(
+            event = nextEvent,
+            onDismiss = {
+                showEventAttendanceDialog = false
             }
         )
     }

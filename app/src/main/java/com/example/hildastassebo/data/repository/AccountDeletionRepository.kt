@@ -121,6 +121,7 @@ class AccountDeletionRepository {
     // ORDNINGEN FÖR RADERING
     // ==========================================
 
+
     private fun deleteAllUserData(
         userId: String,
         onProgress: (String) -> Unit,
@@ -136,54 +137,62 @@ class AccountDeletionRepository {
             userId = userId,
             onSuccess = {
 
-                // STEG 2: Evenemang.
-                onProgress("Raderar evenemang...")
+                // STEG 2: Användarens evenemangssvar.
+                onProgress("Raderar dina evenemangssvar...")
 
-                deleteCollectionDocuments(
-                    collection = "evenemang",
-                    field = "skapad_av",
+                deleteUserEventAnswers(
                     userId = userId,
                     onSuccess = {
 
-                        // STEG 3: Kalenderns arbetspass.
-                        onProgress("Uppdaterar arbetspass...")
+                        // STEG 3: Egna evenemang och deras svar.
+                        onProgress("Raderar dina evenemang...")
 
-                        removeUserFromAllShifts(
+                        deleteOwnedEvents(
                             userId = userId,
                             onSuccess = {
 
-                                // STEG 4: Bokningsdokument.
-                                onProgress("Raderar bokningar...")
+                                // STEG 4: Kalenderns arbetspass.
+                                onProgress("Uppdaterar arbetspass...")
 
-                                deleteCollectionDocuments(
-                                    collection = "bokningar",
-                                    field = "användar_id",
+                                removeUserFromAllShifts(
                                     userId = userId,
                                     onSuccess = {
 
-                                        // STEG 5: Kontrollera resultatet.
-                                        onProgress(
-                                            "Kontrollerar att alla uppgifter är borttagna..."
-                                        )
+                                        // STEG 5: Bokningsdokument.
+                                        onProgress("Raderar bokningar...")
 
-                                        verifyDeletion(
+                                        deleteCollectionDocuments(
+                                            collection = "bokningar",
+                                            field = "användar_id",
                                             userId = userId,
                                             onSuccess = {
 
-                                                // STEG 6: Användarprofil.
+                                                // STEG 6: Kontrollera resultatet.
                                                 onProgress(
-                                                    "Raderar användarprofil..."
+                                                    "Kontrollerar att alla uppgifter är borttagna..."
                                                 )
 
-                                                db.collection("användare")
-                                                    .document(userId)
-                                                    .delete()
-                                                    .addOnSuccessListener {
-                                                        onSuccess()
-                                                    }
-                                                    .addOnFailureListener {
-                                                        onError(it)
-                                                    }
+                                                verifyDeletion(
+                                                    userId = userId,
+                                                    onSuccess = {
+
+                                                        // STEG 7: Användarprofil.
+                                                        onProgress(
+                                                            "Raderar användarprofil..."
+                                                        )
+
+                                                        db.collection("användare")
+                                                            .document(userId)
+                                                            .delete()
+                                                            .addOnSuccessListener {
+                                                                onSuccess()
+                                                            }
+                                                            .addOnFailureListener {
+                                                                onError(it)
+                                                            }
+                                                    },
+                                                    onError = onError
+                                                )
                                             },
                                             onError = onError
                                         )
@@ -200,6 +209,7 @@ class AccountDeletionRepository {
             onError = onError
         )
     }
+
 
     // ==========================================
     // RADERA DOKUMENT I MINDRE OMGÅNGAR
@@ -443,6 +453,7 @@ class AccountDeletionRepository {
                     !it.isEmpty
                 }
 
+
                 if (remainingData) {
                     onError(
                         IllegalStateException(
@@ -451,13 +462,180 @@ class AccountDeletionRepository {
                         )
                     )
                 } else {
-                    onSuccess()
+                    // Kontrollera även användarens evenemangssvar.
+                    verifyEventAnswersDeleted(
+                        userId = userId,
+                        onSuccess = onSuccess,
+                        onError = onError
+                    )
                 }
+
             }
             .addOnFailureListener { exception ->
                 onError(exception)
             }
     }
+
+    // Radera användarens egna evenemang och deras deltagarsvar.
+    private fun deleteOwnedEvents(
+        userId: String,
+        onSuccess: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        db.collection("evenemang")
+            .whereEqualTo("skapad_av", userId)
+            .limit(batchSize)
+            .get(Source.SERVER)
+            .addOnSuccessListener { snapshot ->
+
+                if (snapshot.isEmpty) {
+                    onSuccess()
+                    return@addOnSuccessListener
+                }
+
+                // Hantera ett evenemang åt gången.
+                fun deleteNextEvent(index: Int) {
+                    if (index >= snapshot.documents.size) {
+                        // Kontrollera om fler evenemang återstår.
+                        deleteOwnedEvents(
+                            userId = userId,
+                            onSuccess = onSuccess,
+                            onError = onError
+                        )
+                        return
+                    }
+
+                    val eventRef = snapshot.documents[index].reference
+
+                    // Hämta deltagarsvar i mindre omgångar.
+                    fun deleteAnswers() {
+                        eventRef.collection("svar")
+                            .limit(batchSize)
+                            .get(Source.SERVER)
+                            .addOnSuccessListener { answers ->
+
+                                if (answers.isEmpty) {
+                                    // Alla svar är borta.
+                                    // Nu kan evenemanget raderas.
+                                    eventRef.delete()
+                                        .addOnSuccessListener {
+                                            deleteNextEvent(index + 1)
+                                        }
+                                        .addOnFailureListener(onError)
+
+                                    return@addOnSuccessListener
+                                }
+
+                                val batch = db.batch()
+
+                                answers.documents.forEach { answer ->
+                                    batch.delete(answer.reference)
+                                }
+
+                                batch.commit()
+                                    .addOnSuccessListener {
+                                        // Fortsätt tills inga svar återstår.
+                                        deleteAnswers()
+                                    }
+                                    .addOnFailureListener(onError)
+                            }
+                            .addOnFailureListener(onError)
+                    }
+
+                    deleteAnswers()
+                }
+
+                deleteNextEvent(0)
+            }
+            .addOnFailureListener(onError)
+    }
+
+    // Radera användarens svar på andra personers evenemang.
+    private fun deleteUserEventAnswers(
+        userId: String,
+        onSuccess: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        db.collection("evenemang")
+            .get(Source.SERVER)
+            .addOnSuccessListener { events ->
+
+                // Gå igenom ett evenemang åt gången.
+                fun deleteNextAnswer(index: Int) {
+                    if (index >= events.documents.size) {
+                        onSuccess()
+                        return
+                    }
+
+                    val eventRef = events.documents[index].reference
+                    val answerRef = eventRef.collection("svar")
+                        .document(userId)
+
+                    // Kontrollera om användaren har svarat.
+                    answerRef.get(Source.SERVER)
+                        .addOnSuccessListener { answer ->
+
+                            if (answer.exists()) {
+                                // Radera endast användarens eget svar.
+                                answerRef.delete()
+                                    .addOnSuccessListener {
+                                        deleteNextAnswer(index + 1)
+                                    }
+                                    .addOnFailureListener(onError)
+                            } else {
+                                deleteNextAnswer(index + 1)
+                            }
+                        }
+                        .addOnFailureListener(onError)
+                }
+
+                deleteNextAnswer(0)
+            }
+            .addOnFailureListener(onError)
+    }
+
+    // Kontrollera att användarens evenemangssvar är borttagna.
+    private fun verifyEventAnswersDeleted(
+        userId: String,
+        onSuccess: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        db.collection("evenemang")
+            .get(Source.SERVER)
+            .addOnSuccessListener { events ->
+
+                fun checkNextEvent(index: Int) {
+                    if (index >= events.documents.size) {
+                        onSuccess()
+                        return
+                    }
+
+                    val answerRef = events.documents[index]
+                        .reference
+                        .collection("svar")
+                        .document(userId)
+
+                    answerRef.get(Source.SERVER)
+                        .addOnSuccessListener { answer ->
+                            if (answer.exists()) {
+                                onError(
+                                    IllegalStateException(
+                                        "Ett evenemangssvar finns fortfarande kvar."
+                                    )
+                                )
+                            } else {
+                                checkNextEvent(index + 1)
+                            }
+                        }
+                        .addOnFailureListener(onError)
+                }
+
+                checkNextEvent(0)
+            }
+            .addOnFailureListener(onError)
+    }
+
+
 }
 
 

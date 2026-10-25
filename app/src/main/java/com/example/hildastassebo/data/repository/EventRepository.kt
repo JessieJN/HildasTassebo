@@ -170,7 +170,7 @@ class EventRepository {
         )
     }
 
-    // Radera ett evenemang från Firestore.
+    // Radera ett evenemang och alla tillhörande deltagarsvar.
     fun deleteEvent(
         event: CalendarEvent,
         onSuccess: () -> Unit,
@@ -179,14 +179,50 @@ class EventRepository {
         checkPermission(
             eventId = event.id,
             onAllowed = {
-                eventsCollection.document(event.id)
-                    .delete()
-                    .addOnSuccessListener { onSuccess() }
-                    .addOnFailureListener { onError(it) }
+                val eventRef = eventsCollection.document(event.id)
+                val answersRef = eventRef.collection("svar")
+
+                // Hämta deltagarsvaren innan evenemanget raderas.
+                answersRef.get()
+                    .addOnSuccessListener { snapshot ->
+
+                        // Firestore tillåter högst 500 skrivningar
+                        // i en batch. Vi använder högst 499 svar.
+                        if (snapshot.size() > 499) {
+                            onError(
+                                IllegalStateException(
+                                    "För många deltagarsvar för att radera evenemanget."
+                                )
+                            )
+                        } else {
+                            val batch = db.batch()
+
+                            // Radera samtliga deltagarsvar.
+                            snapshot.documents.forEach { document ->
+                                batch.delete(document.reference)
+                            }
+
+                            // Radera även själva evenemanget.
+                            batch.delete(eventRef)
+
+                            // Genomför raderingen tillsammans.
+                            batch.commit()
+                                .addOnSuccessListener {
+                                    onSuccess()
+                                }
+                                .addOnFailureListener {
+                                    onError(it)
+                                }
+                        }
+                    }
+                    .addOnFailureListener {
+                        onError(it)
+                    }
             },
             onError = onError
         )
     }
+
 
     // Kontrollera om användaren är skapare eller administratör.
     private fun checkPermission(
