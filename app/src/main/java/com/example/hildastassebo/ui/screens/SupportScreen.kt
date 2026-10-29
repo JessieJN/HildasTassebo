@@ -4,15 +4,19 @@ package com.example.hildastassebo.ui.screens
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContactSupport
 import androidx.compose.material3.*
+
 import androidx.compose.runtime.*
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,11 +35,11 @@ private val PaleSage = Color(0xFFE7F0EB)
 private val Ink = Color(0xFF20242C)
 private val Muted = Color(0xFF7D8793)
 
-// SUPPORTADRESSER
+// ÄNDRA TILL DINA TRE RIKTIGA SUPPORTADRESSER
 private val supportRecipients = arrayOf(
-    "linnea.nilsson0199@stud.hkr.se",
-    "jessiejarl@hotmail.com",
-    "gabriella.johansson45@gmail.com"
+    "support1@exempel.se",
+    "support2@exempel.se",
+    "support3@exempel.se"
 )
 
 @Composable
@@ -56,7 +60,7 @@ fun SupportScreen() {
     val userId = currentUser?.uid.orEmpty()
     val userEmail = currentUser?.email.orEmpty()
 
-    // HÄMTA ANVÄNDARENS NAMN
+    // ANVÄNDARENS NAMN
     var userName by remember(userId) {
         mutableStateOf(
             currentUser?.displayName
@@ -218,7 +222,8 @@ fun SupportScreen() {
                 )
 
                 Text(
-                    text = "Supporten kan svara direkt till mejladressen du skickar från.",
+                    text = "Supporten kan svara direkt till " +
+                        "mejladressen du skickar från.",
                     fontSize = 12.sp,
                     color = Muted
                 )
@@ -243,7 +248,9 @@ fun SupportScreen() {
                     minLines = 4,
                     maxLines = 6,
                     supportingText = {
-                        Text("${problemDescription.length}/500 tecken")
+                        Text(
+                            "${problemDescription.length}/500 tecken"
+                        )
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -253,7 +260,7 @@ fun SupportScreen() {
                     )
                 )
 
-                // SKICKA SUPPORTÄRENDE
+                // ÖPPNA MEJLAPP
                 Button(
                     onClick = {
 
@@ -276,33 +283,32 @@ fun SupportScreen() {
 
                         } else {
 
-                            // MEJLETS RUBRIK
+                            // MEJLETS ÄMNE
                             val subject =
                                 "Supportärende - Hildas Tassebo"
 
                             // MEJLETS INNEHÅLL
                             val message = """
-                                Hej Hildas Tassebo Support!
+Hej Hildas Tassebo Support!
 
-                                Jag behöver hjälp med följande:
+Jag behöver hjälp med följande:
 
-                                ${problemDescription.trim()}
+${problemDescription.trim()}
 
-                                ------------------------------
-                                ANVÄNDARUPPGIFTER
-                                ------------------------------
+------------------------------
+ANVÄNDARUPPGIFTER
+------------------------------
 
-                                Namn: $userName
+Namn: $userName
 
-                                E-post: $userEmail
+E-post: $userEmail
 
-                                Användar-ID: $userId
+Användar-ID: $userId
 
-                                ------------------------------
+------------------------------
 
-                                Med vänliga hälsningar
-                                $userName
-
+Med vänliga hälsningar
+$userName
                             """.trimIndent()
 
                             // SKAPA MEJLINTENT
@@ -331,12 +337,10 @@ fun SupportScreen() {
                             try {
 
                                 // ÖPPNA ANVÄNDARENS MEJLAPP
-                                context.startActivity(
-                                    Intent.createChooser(
-                                        emailIntent,
-                                        "Välj mejlapp"
-                                    )
-                                )
+                                context.startActivity(emailIntent)
+
+                                // TÖM SUPPORTFORMULÄRET
+                                problemDescription = ""
 
                                 // VISA INFORMATION
                                 showInfoDialog = true
@@ -353,6 +357,12 @@ fun SupportScreen() {
                             } catch (
                                 e: Exception
                             ) {
+
+                                android.util.Log.e(
+                                    "SupportScreen",
+                                    "Kunde inte öppna mejlappen",
+                                    e
+                                )
 
                                 errorMessage =
                                     "Kunde inte öppna mejlappen. " +
@@ -413,8 +423,9 @@ fun SupportScreen() {
             },
             text = {
                 Text(
-                    "Ditt supportmeddelande är förberett.\n\n" +
-                        "Tryck på Skicka i din mejlapp " +
+                    "Ditt supportmeddelande har " +
+                        "förberetts i din mejlapp.\n\n" +
+                        "Tryck på Skicka i mejlappen " +
                         "för att skicka ärendet till supporten.\n\n" +
                         "Supporten kan sedan svara direkt " +
                         "till mejladressen du skickade från."
