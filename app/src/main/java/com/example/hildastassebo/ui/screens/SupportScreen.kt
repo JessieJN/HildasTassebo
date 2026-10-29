@@ -35,11 +35,11 @@ private val PaleSage = Color(0xFFE7F0EB)
 private val Ink = Color(0xFF20242C)
 private val Muted = Color(0xFF7D8793)
 
-// ÄNDRA TILL DINA TRE RIKTIGA SUPPORTADRESSER
+// SUPPORTADRESSER
 private val supportRecipients = arrayOf(
-    "support1@exempel.se",
-    "support2@exempel.se",
-    "support3@exempel.se"
+    "jessiejarl@hotmail.com",
+    "liinneaniilsson@hotmail.se",
+    "gabriella.johansson45@gmail.com"
 )
 
 @Composable
