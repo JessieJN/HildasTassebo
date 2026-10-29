@@ -170,10 +170,10 @@ fun AboutScreen() {
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-
+            
                 Text(
-                    text = "Linnea Nilsson, Jessie Jarl Nilsson och" +
-                    Gabriella Johansson är tre studenter vid Högskolan " +
+                    text = "Linnea Nilsson, Jessie Jarl Nilsson och " +
+                        "Gabriella Johansson är tre studenter vid Högskolan " +
                         "Kristianstad. Under kursen " +
                         "Utveckling i mobila applikationer " +
                         "har vi utvecklat denna schemaapp " +
