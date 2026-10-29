@@ -3,6 +3,7 @@ package com.example.hildastassebo.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ContactSupport
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PersonOutline
@@ -19,7 +20,8 @@ fun BottomNavigationBar(
     onHomeClick: () -> Unit,
     onCalendarClick: () -> Unit,
     onProfileClick: () -> Unit,
-    onAboutClick: () -> Unit
+    onAboutClick: () -> Unit,
+    onSupportClick: () -> Unit
 ) {
     NavigationBar(
         containerColor = Color.White
@@ -79,7 +81,7 @@ fun BottomNavigationBar(
             )
         )
 
-        // OM OSS 
+        // OM OSS
         NavigationBarItem(
             selected = selectedTab == "about",
             onClick = onAboutClick,
@@ -90,6 +92,24 @@ fun BottomNavigationBar(
                 )
             },
             label = { Text("Om") },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = DarkSage,
+                selectedTextColor = DarkSage,
+                indicatorColor = Sage.copy(alpha = 0.2f)
+            )
+        )
+
+        // SUPPORT
+        NavigationBarItem(
+            selected = selectedTab == "support",
+            onClick = onSupportClick,
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.ContactSupport,
+                    contentDescription = "Support"
+                )
+            },
+            label = { Text("Support") },
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = DarkSage,
                 selectedTextColor = DarkSage,

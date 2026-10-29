@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 
-// Färger som matchar resten av appen
+
 private val Sage = Color(0xFF91B1A3)
 private val DarkSage = Color(0xFF47796C)
 private val PaleSage = Color(0xFFE7F0EB)
@@ -172,10 +172,11 @@ fun AboutScreen() {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Vi är tre studenter vid Högskolan " +
-                        "Kristianstad som under kursen " +
+                    text = "Linnea Nilsson, Jessie Jarl Nilsson och" +
+                    Gabriella Johansson är tre studenter vid Högskolan " +
+                        "Kristianstad. Under kursen " +
                         "Utveckling i mobila applikationer " +
-                        "har utvecklat denna schemaapp " +
+                        "har vi utvecklat denna schemaapp " +
                         "för Hildas Tassebo.",
                     fontSize = 15.sp,
                     color = Ink,

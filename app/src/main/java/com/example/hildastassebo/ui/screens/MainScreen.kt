@@ -30,12 +30,12 @@ fun MainScreen(
         mutableStateOf("home")
     }
 
-    // Gemensam lista för evenemang i kalendern och på startsidan.
+    // Gemensam lista för evenemang.
     val events = remember {
         mutableStateMapOf<LocalDate, List<CalendarEvent>>()
     }
 
-    // Hämtar evenemang från Firebase oavsett vilken flik som visas.
+    // Hämtar evenemang från Firebase.
     val eventRepository = remember { EventRepository() }
 
     DisposableEffect(eventRepository) {
@@ -58,14 +58,15 @@ fun MainScreen(
         }
     }
 
-    // Håller reda på om inställningssidan ska visas.
+    // Håller reda på om inställningar visas.
     var showSettings by rememberSaveable {
         mutableStateOf(false)
     }
 
-
-    // Hämtar inloggad användares roll från Firebase.
-    var userRole by remember { mutableStateOf<Long?>(null) }
+    // Hämtar användarens roll från Firebase.
+    var userRole by remember {
+        mutableStateOf<Long?>(null)
+    }
 
     DisposableEffect(Unit) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -127,6 +128,12 @@ fun MainScreen(
                 onAboutClick = {
                     selectedTab = "about"
                     showSettings = false
+                },
+
+                // NYTT: SUPPORT
+                onSupportClick = {
+                    selectedTab = "support"
+                    showSettings = false
                 }
             )
         }
@@ -170,7 +177,7 @@ fun MainScreen(
                         events = events
                     )
 
-                    // MIN SIDA – olika beroende på användarens roll.
+                    // MIN SIDA
                     "profile" -> {
                         when (userRole) {
                             1L -> AdminScreen(
@@ -193,6 +200,9 @@ fun MainScreen(
 
                     // OM OSS
                     "about" -> AboutScreen()
+
+                    // NYTT: SUPPORT
+                    "support" -> SupportScreen()
                 }
             }
         }
@@ -209,9 +219,7 @@ fun MainScreen(
 )
 @Composable
 fun MainScreenPreview() {
-
     MainScreen(
         onLogout = {}
     )
 }
-
